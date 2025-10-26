@@ -9,8 +9,8 @@ from typing import Dict, List, Optional
 import yaml
 from loguru import logger
 
-from aml_miner.training.train_ranker import prepare_ranking_data, train_alert_ranker
-from aml_miner.training.train_scorer import prepare_training_data, train_alert_scorer
+from alert_scoring.training.train_ranker import prepare_ranking_data, train_alert_ranker
+from alert_scoring.training.train_scorer import prepare_training_data, train_alert_scorer
 
 
 def download_data_if_needed(
@@ -280,7 +280,7 @@ def main():
     parser.add_argument(
         '--config',
         type=Path,
-        default=Path('aml_miner/config/model_config.yaml'),
+        default=Path('alert_scoring/config/model_config.yaml'),
         help='Path to model configuration YAML file'
     )
     

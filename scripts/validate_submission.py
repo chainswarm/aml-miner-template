@@ -12,9 +12,9 @@ import pandas as pd
 import requests
 from loguru import logger
 
-from aml_miner.config import Settings
-from aml_miner.models import AlertScorerModel, AlertRankerModel, ClusterScorerModel
-from aml_miner.utils.data_loader import BatchDataLoader
+from alert_scoring.config import Settings
+from alert_scoring.models import AlertScorerModel, AlertRankerModel, ClusterScorerModel
+from alert_scoring.utils.data_loader import BatchDataLoader
 
 
 def test_api_locally(
@@ -36,7 +36,7 @@ def test_api_locally(
     try:
         logger.info("Starting API server")
         server_process = subprocess.Popen(
-            [sys.executable, "-m", "aml_miner.api.server"],
+            [sys.executable, "-m", "alert_scoring.api.server"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True

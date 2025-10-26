@@ -1,15 +1,15 @@
 version: '3.8'
 
 services:
-  # AML Miner API Service
-  aml-miner-api:
+  # Alert Scoring API Service
+  alert-scoring-api:
     # Build from local Dockerfile
     build:
       context: .
       dockerfile: Dockerfile
     
     # Container name
-    container_name: aml-miner-api
+    container_name: alert-scoring-api
     
     # Port mapping: host:container
     ports:

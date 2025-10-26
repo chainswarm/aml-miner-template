@@ -1,31 +1,6 @@
 # API Reference
 
-Complete reference for the AML Miner Template REST API.
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Base URL](#base-url)
-- [Authentication](#authentication)
-- [Endpoints](#endpoints)
-  - [Health Check](#health-check)
-  - [Version Info](#version-info)
-  - [Score Alerts](#score-alerts)
-  - [Rank Alerts](#rank-alerts)
-  - [Score Clusters](#score-clusters)
-- [Request/Response Formats](#requestresponse-formats)
-- [Error Handling](#error-handling)
-- [Rate Limiting](#rate-limiting)
-- [Performance Tips](#performance-tips)
-
-## Overview
-
-The AML Miner Template provides a RESTful API for scoring and ranking Anti-Money Laundering (AML) alerts and transaction clusters.
-
-**API Version:** 1.0.0  
-**Protocol:** HTTP/HTTPS  
-**Format:** JSON  
-**Port:** 8000 (default)
+Complete reference for the Alert Scoring Template REST API.
 
 ## Base URL
 
@@ -33,843 +8,886 @@ The AML Miner Template provides a RESTful API for scoring and ranking Anti-Money
 http://localhost:8000
 ```
 
-For production deployments, replace `localhost` with your server domain.
+## Overview
+
+The API provides read-only access to pre-computed alert scores, rankings, and cluster scores stored in ClickHouse. All endpoints use GET requests (except `/refresh` which is a no-op POST).
+
+**Key Concepts:**
+- **Processing Date**: The date when a batch was processed (YYYY-MM-DD format)
+- **Network**: Blockchain network identifier (ethereum, bitcoin, polygon, etc.)
+- **Batch Processing**: Data is processed offline before being served via API
 
 ## Authentication
 
-Currently, the API does not require authentication by default. For production use, implement authentication as described in the [Customization Guide](customization.md#adding-authentication).
+Currently, the API does not require authentication. For production deployments, add authentication middleware as needed.
 
-## Endpoints
+## Common Query Parameters
 
-### Health Check
+Most endpoints accept these query parameters:
 
-Check if the API server is running and healthy.
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `network` | string | `ethereum` | Blockchain network to query |
 
-**Endpoint:** `GET /health`
+## Response Format
 
-**Request:**
-```bash
-curl http://localhost:8000/health
+All successful responses return JSON with appropriate HTTP status codes:
+
+- `200 OK` - Successful request
+- `404 Not Found` - Resource not found
+- `500 Internal Server Error` - Server error
+
+Error responses include a detail message:
+
+```json
+{
+  "detail": "Error description here"
+}
 ```
+
+---
+
+## Health & Version Endpoints
+
+### GET /health
+
+Health check endpoint.
 
 **Response:**
 ```json
 {
   "status": "healthy",
-  "version": "1.0.0"
+  "storage": "clickhouse",
+  "default_network": "ethereum"
 }
 ```
 
-**Status Codes:**
-- `200 OK` - Service is healthy
-- `503 Service Unavailable` - Service is unhealthy
+**cURL Example:**
+```bash
+curl http://localhost:8000/health
+```
+
+**Python Example:**
+```python
+import requests
+
+response = requests.get("http://localhost:8000/health")
+data = response.json()
+print(f"Status: {data['status']}")
+```
 
 ---
 
-### Version Info
+### GET /version
 
-Get the current API version.
-
-**Endpoint:** `GET /version`
-
-**Request:**
-```bash
-curl http://localhost:8000/version
-```
+Get API and storage backend version information.
 
 **Response:**
 ```json
 {
-  "version": "1.0.0",
-  "api_version": "v1"
+  "api_version": "1.0.0",
+  "storage_backend": "clickhouse"
 }
 ```
 
-**Status Codes:**
-- `200 OK` - Success
-
----
-
-### Score Alerts
-
-Score individual AML alerts using the trained alert scorer model.
-
-**Endpoint:** `POST /score/alerts`
-
-**Request Schema:**
-
-```json
-{
-  "alerts": [
-    {
-      "alert_id": "string",
-      "network": "string",
-      "address": "string",
-      "amount_usd": "number",
-      "transaction_count": "integer",
-      "risk_category": "string",
-      "timestamp": "string (ISO 8601)"
-    }
-  ]
-}
-```
-
-**Field Descriptions:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `alert_id` | string | Yes | Unique identifier for the alert |
-| `network` | string | Yes | Blockchain network (e.g., "bitcoin", "ethereum") |
-| `address` | string | Yes | Cryptocurrency address |
-| `amount_usd` | number | Yes | Transaction amount in USD |
-| `transaction_count` | integer | Yes | Number of transactions |
-| `risk_category` | string | Yes | Risk category (e.g., "high_value", "medium_value") |
-| `timestamp` | string | Yes | Alert timestamp in ISO 8601 format |
-
-**Example Request:**
-
+**cURL Example:**
 ```bash
-curl -X POST http://localhost:8000/score/alerts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "alerts": [
-      {
-        "alert_id": "alert-001",
-        "network": "bitcoin",
-        "address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
-        "amount_usd": 50000.0,
-        "transaction_count": 10,
-        "risk_category": "high_value",
-        "timestamp": "2025-01-15T10:30:00Z"
-      },
-      {
-        "alert_id": "alert-002",
-        "network": "ethereum",
-        "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
-        "amount_usd": 25000.0,
-        "transaction_count": 5,
-        "risk_category": "medium_value",
-        "timestamp": "2025-01-15T11:00:00Z"
-      }
-    ]
-  }'
+curl http://localhost:8000/version
 ```
-
-**Response Schema:**
-
-```json
-{
-  "scores": [
-    {
-      "alert_id": "string",
-      "score": "number",
-      "model_version": "string"
-    }
-  ]
-}
-```
-
-**Example Response:**
-
-```json
-{
-  "scores": [
-    {
-      "alert_id": "alert-001",
-      "score": 0.8523,
-      "model_version": "1.0.0"
-    },
-    {
-      "alert_id": "alert-002",
-      "score": 0.6234,
-      "model_version": "1.0.0"
-    }
-  ]
-}
-```
-
-**Score Interpretation:**
-
-- `0.0 - 0.3`: Low risk
-- `0.3 - 0.7`: Medium risk
-- `0.7 - 1.0`: High risk
-
-**Status Codes:**
-- `200 OK` - Scoring successful
-- `400 Bad Request` - Invalid request format
-- `422 Unprocessable Entity` - Validation error
-- `500 Internal Server Error` - Server error
 
 ---
 
-### Rank Alerts
+## Date Endpoints
 
-Rank multiple alerts by priority using the alert ranker model.
+### GET /dates/available
 
-**Endpoint:** `POST /rank/alerts`
+Get all available processing dates for a network.
 
-**Request Schema:**
+**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `network` | string | No | `ethereum` | Network to query |
 
-Same as [Score Alerts](#score-alerts) request schema.
+**Response:**
+```json
+[
+  "2024-01-15",
+  "2024-01-14",
+  "2024-01-13"
+]
+```
 
-**Example Request:**
-
+**cURL Example:**
 ```bash
-curl -X POST http://localhost:8000/rank/alerts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "alerts": [
-      {
-        "alert_id": "alert-001",
-        "network": "bitcoin",
-        "address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
-        "amount_usd": 50000.0,
-        "transaction_count": 10,
-        "risk_category": "high_value",
-        "timestamp": "2025-01-15T10:30:00Z"
-      },
-      {
-        "alert_id": "alert-002",
-        "network": "ethereum",
-        "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
-        "amount_usd": 25000.0,
-        "transaction_count": 5,
-        "risk_category": "medium_value",
-        "timestamp": "2025-01-15T11:00:00Z"
-      },
-      {
-        "alert_id": "alert-003",
-        "network": "bitcoin",
-        "address": "3J98t1WpEZ73CNmYviecrnyiWrnqRhWNLy",
-        "amount_usd": 100000.0,
-        "transaction_count": 25,
-        "risk_category": "high_value",
-        "timestamp": "2025-01-15T12:00:00Z"
-      }
-    ]
-  }'
+curl "http://localhost:8000/dates/available?network=ethereum"
 ```
 
-**Response Schema:**
+**Python Example:**
+```python
+import requests
 
-```json
-{
-  "rankings": [
-    {
-      "alert_id": "string",
-      "rank": "integer",
-      "score": "number"
-    }
-  ]
-}
+response = requests.get(
+    "http://localhost:8000/dates/available",
+    params={"network": "ethereum"}
+)
+dates = response.json()
+print(f"Available dates: {dates}")
 ```
-
-**Example Response:**
-
-```json
-{
-  "rankings": [
-    {
-      "alert_id": "alert-003",
-      "rank": 1,
-      "score": 0.9234
-    },
-    {
-      "alert_id": "alert-001",
-      "rank": 2,
-      "score": 0.8523
-    },
-    {
-      "alert_id": "alert-002",
-      "rank": 3,
-      "score": 0.6234
-    }
-  ]
-}
-```
-
-**Ranking Details:**
-
-- Rankings are sorted from highest priority (rank 1) to lowest
-- Lower rank number = higher priority
-- Scores represent relative priority
-
-**Status Codes:**
-- `200 OK` - Ranking successful
-- `400 Bad Request` - Invalid request format
-- `422 Unprocessable Entity` - Validation error
-- `500 Internal Server Error` - Server error
 
 ---
 
-### Score Clusters
+### GET /dates/latest
 
-Score transaction clusters using the cluster scorer model.
+Get the latest processing date for a network.
 
-**Endpoint:** `POST /score/clusters`
+**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `network` | string | No | `ethereum` | Network to query |
 
-**Request Schema:**
-
+**Response:**
 ```json
 {
-  "clusters": [
-    {
-      "cluster_id": "string",
-      "network": "string",
-      "total_volume_usd": "number",
-      "transaction_count": "integer",
-      "unique_addresses": "integer",
-      "pattern_matches": ["string"],
-      "risk_level": "string"
-    }
-  ]
+  "processing_date": "2024-01-15",
+  "network": "ethereum"
 }
 ```
 
-**Field Descriptions:**
+**Error Responses:**
+- `404` - No processing dates available for network
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `cluster_id` | string | Yes | Unique identifier for the cluster |
-| `network` | string | Yes | Blockchain network |
-| `total_volume_usd` | number | Yes | Total transaction volume in USD |
-| `transaction_count` | integer | Yes | Number of transactions in cluster |
-| `unique_addresses` | integer | Yes | Number of unique addresses |
-| `pattern_matches` | array[string] | Yes | Detected patterns (e.g., ["mixing", "layering"]) |
-| `risk_level` | string | Yes | Initial risk assessment (e.g., "high", "medium", "low") |
-
-**Example Request:**
-
+**cURL Example:**
 ```bash
-curl -X POST http://localhost:8000/score/clusters \
-  -H "Content-Type: application/json" \
-  -d '{
-    "clusters": [
-      {
-        "cluster_id": "cluster-001",
-        "network": "bitcoin",
-        "total_volume_usd": 1000000.0,
-        "transaction_count": 150,
-        "unique_addresses": 45,
-        "pattern_matches": ["mixing", "layering"],
-        "risk_level": "high"
-      },
-      {
-        "cluster_id": "cluster-002",
-        "network": "ethereum",
-        "total_volume_usd": 500000.0,
-        "transaction_count": 80,
-        "unique_addresses": 25,
-        "pattern_matches": [],
-        "risk_level": "medium"
-      }
-    ]
-  }'
+curl "http://localhost:8000/dates/latest?network=ethereum"
 ```
-
-**Response Schema:**
-
-```json
-{
-  "scores": [
-    {
-      "cluster_id": "string",
-      "score": "number",
-      "model_version": "string"
-    }
-  ]
-}
-```
-
-**Example Response:**
-
-```json
-{
-  "scores": [
-    {
-      "cluster_id": "cluster-001",
-      "score": 0.9156,
-      "model_version": "1.0.0"
-    },
-    {
-      "cluster_id": "cluster-002",
-      "score": 0.5678,
-      "model_version": "1.0.0"
-    }
-  ]
-}
-```
-
-**Status Codes:**
-- `200 OK` - Scoring successful
-- `400 Bad Request` - Invalid request format
-- `422 Unprocessable Entity` - Validation error
-- `500 Internal Server Error` - Server error
 
 ---
 
-## Request/Response Formats
+## Alert Score Endpoints
 
-### Content Type
+### GET /scores/alerts/latest
 
-All requests must use `Content-Type: application/json`.
+Get the latest alert scores for a network.
 
-### Character Encoding
+**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `network` | string | No | `ethereum` | Network to query |
 
-UTF-8 encoding is required for all requests and responses.
-
-### Timestamps
-
-All timestamps must be in ISO 8601 format:
-
-```
-2025-01-15T10:30:00Z        # UTC time
-2025-01-15T10:30:00+01:00   # With timezone offset
-```
-
-### Number Formats
-
-- Integers: No decimal point (e.g., `100`)
-- Floats: With decimal point (e.g., `100.50`)
-- Scientific notation accepted (e.g., `1.5e6`)
-
-### Arrays
-
-Empty arrays are valid:
-
+**Response:**
 ```json
 {
-  "pattern_matches": []
+  "processing_date": "2024-01-15",
+  "network": "ethereum",
+  "total_scores": 15234,
+  "scores": [
+    {
+      "alert_id": "alert_001",
+      "score": 0.9234,
+      "model_version": "1.0.0",
+      "latency_ms": 12.5,
+      "explain_json": "{\"top_features\": [\"volume_usd\", \"pagerank\"]}"
+    },
+    {
+      "alert_id": "alert_002",
+      "score": 0.8756,
+      "model_version": "1.0.0",
+      "latency_ms": 11.8,
+      "explain_json": null
+    }
+  ]
 }
 ```
 
-### Null Values
+**Error Responses:**
+- `404` - No scores available for network
 
-Null values are not accepted for required fields. Omit optional fields instead of sending null.
+**cURL Example:**
+```bash
+curl "http://localhost:8000/scores/alerts/latest?network=ethereum"
+```
+
+**Python Example:**
+```python
+import requests
+
+response = requests.get(
+    "http://localhost:8000/scores/alerts/latest",
+    params={"network": "ethereum"}
+)
+data = response.json()
+print(f"Processing date: {data['processing_date']}")
+print(f"Total scores: {data['total_scores']}")
+
+# Get top 10 highest scores
+top_scores = sorted(data['scores'], key=lambda x: x['score'], reverse=True)[:10]
+for score in top_scores:
+    print(f"Alert {score['alert_id']}: {score['score']:.4f}")
+```
+
+---
+
+### GET /scores/alerts/{processing_date}
+
+Get alert scores for a specific processing date.
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `processing_date` | string | Yes | Processing date (YYYY-MM-DD) |
+
+**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `network` | string | No | `ethereum` | Network to query |
+
+**Response:**
+```json
+[
+  {
+    "alert_id": "alert_001",
+    "score": 0.9234,
+    "model_version": "1.0.0",
+    "latency_ms": 12.5,
+    "explain_json": "{\"top_features\": [\"volume_usd\"]}"
+  }
+]
+```
+
+**Error Responses:**
+- `404` - No scores found for date and network
+
+**cURL Example:**
+```bash
+curl "http://localhost:8000/scores/alerts/2024-01-15?network=ethereum"
+```
+
+**Python Example:**
+```python
+import requests
+
+response = requests.get(
+    "http://localhost:8000/scores/alerts/2024-01-15",
+    params={"network": "ethereum"}
+)
+scores = response.json()
+
+# Filter high-risk alerts (score > 0.8)
+high_risk = [s for s in scores if s['score'] > 0.8]
+print(f"Found {len(high_risk)} high-risk alerts")
+```
+
+---
+
+## Ranking Endpoints
+
+### GET /scores/rankings/latest
+
+Get the latest alert rankings for a network.
+
+**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `network` | string | No | `ethereum` | Network to query |
+
+**Response:**
+```json
+[
+  {
+    "processing_date": "2024-01-15",
+    "network": "ethereum",
+    "alert_id": "alert_001",
+    "rank": 1,
+    "model_version": "1.0.0"
+  },
+  {
+    "processing_date": "2024-01-15",
+    "network": "ethereum",
+    "alert_id": "alert_002",
+    "rank": 2,
+    "model_version": "1.0.0"
+  }
+]
+```
+
+**Error Responses:**
+- `404` - No rankings available for network
+
+**cURL Example:**
+```bash
+curl "http://localhost:8000/scores/rankings/latest?network=ethereum"
+```
+
+---
+
+### GET /scores/rankings/{processing_date}
+
+Get alert rankings for a specific processing date.
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `processing_date` | string | Yes | Processing date (YYYY-MM-DD) |
+
+**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `network` | string | No | `ethereum` | Network to query |
+
+**Response:**
+```json
+[
+  {
+    "processing_date": "2024-01-15",
+    "network": "ethereum",
+    "alert_id": "alert_001",
+    "rank": 1,
+    "model_version": "1.0.0"
+  }
+]
+```
+
+**Error Responses:**
+- `404` - No rankings found for date and network
+
+**cURL Example:**
+```bash
+curl "http://localhost:8000/scores/rankings/2024-01-15?network=ethereum"
+```
+
+---
+
+### GET /scores/rankings/top/{n}
+
+Get top N ranked alerts.
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `n` | integer | Yes | Number of top alerts to return |
+
+**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `processing_date` | string | No | Latest date | Processing date (YYYY-MM-DD) |
+| `network` | string | No | `ethereum` | Network to query |
+
+**Response:**
+```json
+[
+  {
+    "processing_date": "2024-01-15",
+    "network": "ethereum",
+    "alert_id": "alert_001",
+    "rank": 1,
+    "model_version": "1.0.0"
+  },
+  {
+    "processing_date": "2024-01-15",
+    "network": "ethereum",
+    "alert_id": "alert_002",
+    "rank": 2,
+    "model_version": "1.0.0"
+  }
+]
+```
+
+**Error Responses:**
+- `404` - No rankings available or found
+
+**cURL Examples:**
+```bash
+# Get top 100 from latest date
+curl "http://localhost:8000/scores/rankings/top/100?network=ethereum"
+
+# Get top 50 from specific date
+curl "http://localhost:8000/scores/rankings/top/50?processing_date=2024-01-15&network=ethereum"
+```
+
+**Python Example:**
+```python
+import requests
+
+# Get top 10 alerts
+response = requests.get(
+    "http://localhost:8000/scores/rankings/top/10",
+    params={"network": "ethereum"}
+)
+rankings = response.json()
+
+for ranking in rankings:
+    print(f"Rank {ranking['rank']}: {ranking['alert_id']}")
+```
+
+---
+
+## Cluster Score Endpoints
+
+### GET /scores/clusters/latest
+
+Get the latest cluster scores for a network.
+
+**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `network` | string | No | `ethereum` | Network to query |
+
+**Response:**
+```json
+[
+  {
+    "processing_date": "2024-01-15",
+    "network": "ethereum",
+    "cluster_id": "cluster_001",
+    "score": 0.8845,
+    "model_version": "1.0.0"
+  },
+  {
+    "processing_date": "2024-01-15",
+    "network": "ethereum",
+    "cluster_id": "cluster_002",
+    "score": 0.7623,
+    "model_version": "1.0.0"
+  }
+]
+```
+
+**Error Responses:**
+- `404` - No cluster scores available for network
+
+**cURL Example:**
+```bash
+curl "http://localhost:8000/scores/clusters/latest?network=ethereum"
+```
+
+**Python Example:**
+```python
+import requests
+
+response = requests.get(
+    "http://localhost:8000/scores/clusters/latest",
+    params={"network": "ethereum"}
+)
+clusters = response.json()
+
+# Find high-risk clusters
+high_risk_clusters = [c for c in clusters if c['score'] > 0.8]
+print(f"Found {len(high_risk_clusters)} high-risk clusters")
+```
+
+---
+
+### GET /scores/clusters/{processing_date}
+
+Get cluster scores for a specific processing date.
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `processing_date` | string | Yes | Processing date (YYYY-MM-DD) |
+
+**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `network` | string | No | `ethereum` | Network to query |
+
+**Response:**
+```json
+[
+  {
+    "processing_date": "2024-01-15",
+    "network": "ethereum",
+    "cluster_id": "cluster_001",
+    "score": 0.8845,
+    "model_version": "1.0.0"
+  }
+]
+```
+
+**Error Responses:**
+- `404` - No cluster scores found for date and network
+
+**cURL Example:**
+```bash
+curl "http://localhost:8000/scores/clusters/2024-01-15?network=ethereum"
+```
+
+---
+
+### GET /scores/clusters/{cluster_id}/{processing_date}
+
+Get score for a specific cluster.
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `cluster_id` | string | Yes | Cluster identifier |
+| `processing_date` | string | Yes | Processing date (YYYY-MM-DD) |
+
+**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `network` | string | No | `ethereum` | Network to query |
+
+**Response:**
+```json
+{
+  "processing_date": "2024-01-15",
+  "network": "ethereum",
+  "cluster_id": "cluster_001",
+  "score": 0.8845,
+  "model_version": "1.0.0"
+}
+```
+
+**Error Responses:**
+- `404` - Cluster score not found
+
+**cURL Example:**
+```bash
+curl "http://localhost:8000/scores/clusters/cluster_001/2024-01-15?network=ethereum"
+```
+
+---
+
+## Metadata Endpoints
+
+### GET /metadata/latest
+
+Get the latest batch processing metadata for a network.
+
+**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `network` | string | No | `ethereum` | Network to query |
+
+**Response:**
+```json
+{
+  "processing_date": "2024-01-15",
+  "network": "ethereum",
+  "processed_at": "2024-01-15T14:30:00Z",
+  "input_counts_alerts": 15234,
+  "input_counts_features": 15234,
+  "input_counts_clusters": 3456,
+  "output_counts_alert_scores": 15234,
+  "output_counts_alert_rankings": 15234,
+  "output_counts_cluster_scores": 3456,
+  "latencies_ms_alert_scoring": 2300,
+  "latencies_ms_alert_ranking": 1800,
+  "latencies_ms_cluster_scoring": 900,
+  "latencies_ms_total": 5200,
+  "model_versions_alert_scorer": "1.0.0",
+  "model_versions_alert_ranker": "1.0.0",
+  "model_versions_cluster_scorer": "1.0.0",
+  "status": "completed",
+  "error_message": null
+}
+```
+
+**Error Responses:**
+- `404` - No batch metadata available for network
+
+**cURL Example:**
+```bash
+curl "http://localhost:8000/metadata/latest?network=ethereum"
+```
+
+**Python Example:**
+```python
+import requests
+
+response = requests.get(
+    "http://localhost:8000/metadata/latest",
+    params={"network": "ethereum"}
+)
+metadata = response.json()
+
+print(f"Processing date: {metadata['processing_date']}")
+print(f"Total processing time: {metadata['latencies_ms_total']}ms")
+print(f"Alerts processed: {metadata['input_counts_alerts']}")
+print(f"Status: {metadata['status']}")
+```
+
+---
+
+### GET /metadata/{processing_date}
+
+Get batch processing metadata for a specific date.
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `processing_date` | string | Yes | Processing date (YYYY-MM-DD) |
+
+**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `network` | string | No | `ethereum` | Network to query |
+
+**Response:**
+Same as `/metadata/latest`
+
+**Error Responses:**
+- `404` - No metadata found for date and network
+
+**cURL Example:**
+```bash
+curl "http://localhost:8000/metadata/2024-01-15?network=ethereum"
+```
+
+---
+
+### GET /metadata/history
+
+Get historical batch processing metadata.
+
+**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `network` | string | No | `ethereum` | Network to query |
+| `limit` | integer | No | 30 | Number of records to return (1-365) |
+
+**Response:**
+```json
+[
+  {
+    "processing_date": "2024-01-15",
+    "network": "ethereum",
+    "processed_at": "2024-01-15T14:30:00Z",
+    "input_counts_alerts": 15234,
+    "output_counts_alert_scores": 15234,
+    "latencies_ms_total": 5200,
+    "status": "completed"
+  },
+  {
+    "processing_date": "2024-01-14",
+    "network": "ethereum",
+    "processed_at": "2024-01-14T14:30:00Z",
+    "input_counts_alerts": 14523,
+    "output_counts_alert_scores": 14523,
+    "latencies_ms_total": 4800,
+    "status": "completed"
+  }
+]
+```
+
+**Error Responses:**
+- `404` - No metadata history available for network
+
+**cURL Example:**
+```bash
+# Get last 30 batches (default)
+curl "http://localhost:8000/metadata/history?network=ethereum"
+
+# Get last 7 batches
+curl "http://localhost:8000/metadata/history?network=ethereum&limit=7"
+```
+
+**Python Example:**
+```python
+import requests
+import pandas as pd
+
+response = requests.get(
+    "http://localhost:8000/metadata/history",
+    params={"network": "ethereum", "limit": 30}
+)
+history = response.json()
+
+# Convert to DataFrame for analysis
+df = pd.DataFrame(history)
+print(f"Average processing time: {df['latencies_ms_total'].mean():.0f}ms")
+print(f"Average alerts per batch: {df['input_counts_alerts'].mean():.0f}")
+```
+
+---
+
+## Utility Endpoints
+
+### POST /refresh
+
+No-op endpoint for compatibility. ClickHouse data is immediately available without refresh.
+
+**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `network` | string | No | `ethereum` | Network (ignored) |
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "ClickHouse doesn't require refresh - data is immediately available",
+  "network": "ethereum"
+}
+```
+
+**cURL Example:**
+```bash
+curl -X POST "http://localhost:8000/refresh?network=ethereum"
+```
+
+---
 
 ## Error Handling
 
 ### Error Response Format
 
-All errors follow this format:
-
 ```json
 {
-  "detail": "Error message description"
+  "detail": "Error message describing what went wrong"
 }
 ```
 
-### Common Errors
+### Common HTTP Status Codes
 
-**400 Bad Request**
+| Code | Meaning | Common Causes |
+|------|---------|---------------|
+| 200 | Success | Request completed successfully |
+| 404 | Not Found | Resource doesn't exist (no data for date/network) |
+| 500 | Server Error | Database connection issue, query error |
 
-Invalid JSON or malformed request:
+### Example Error Handling
 
-```json
-{
-  "detail": "Invalid JSON format"
-}
-```
-
-**422 Unprocessable Entity**
-
-Validation error:
-
-```json
-{
-  "detail": [
-    {
-      "loc": ["body", "alerts", 0, "amount_usd"],
-      "msg": "field required",
-      "type": "value_error.missing"
-    }
-  ]
-}
-```
-
-**500 Internal Server Error**
-
-Server-side error:
-
-```json
-{
-  "detail": "Internal server error"
-}
-```
-
-### Error Handling Example
-
+**Python:**
 ```python
 import requests
 
-response = requests.post(
-    'http://localhost:8000/score/alerts',
-    json={'alerts': [...]},
-    timeout=30
-)
-
-if response.status_code == 200:
-    result = response.json()
-    print(f"Scores: {result['scores']}")
-elif response.status_code == 422:
-    errors = response.json()
-    print(f"Validation errors: {errors['detail']}")
-else:
-    print(f"Error {response.status_code}: {response.text}")
+try:
+    response = requests.get(
+        "http://localhost:8000/scores/alerts/2024-01-15",
+        params={"network": "ethereum"}
+    )
+    response.raise_for_status()
+    scores = response.json()
+except requests.exceptions.HTTPError as e:
+    if e.response.status_code == 404:
+        print(f"No data found: {e.response.json()['detail']}")
+    else:
+        print(f"Server error: {e.response.json()['detail']}")
+except requests.exceptions.RequestException as e:
+    print(f"Connection error: {e}")
 ```
+
+---
+
+## Python Client Examples
+
+### Complete Client Class
+
+```python
+import requests
+from typing import List, Dict, Optional
+from datetime import date
+
+class AlertScoringClient:
+    def __init__(self, base_url: str = "http://localhost:8000"):
+        self.base_url = base_url
+    
+    def get_latest_scores(self, network: str = "ethereum") -> Dict:
+        response = requests.get(
+            f"{self.base_url}/scores/alerts/latest",
+            params={"network": network}
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_scores_by_date(
+        self, 
+        processing_date: str, 
+        network: str = "ethereum"
+    ) -> List[Dict]:
+        response = requests.get(
+            f"{self.base_url}/scores/alerts/{processing_date}",
+            params={"network": network}
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_top_rankings(
+        self, 
+        n: int, 
+        network: str = "ethereum",
+        processing_date: Optional[str] = None
+    ) -> List[Dict]:
+        params = {"network": network}
+        if processing_date:
+            params["processing_date"] = processing_date
+        
+        response = requests.get(
+            f"{self.base_url}/scores/rankings/top/{n}",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_metadata(
+        self, 
+        network: str = "ethereum",
+        processing_date: Optional[str] = None
+    ) -> Dict:
+        if processing_date:
+            url = f"{self.base_url}/metadata/{processing_date}"
+        else:
+            url = f"{self.base_url}/metadata/latest"
+        
+        response = requests.get(url, params={"network": network})
+        response.raise_for_status()
+        return response.json()
+    
+    def get_available_dates(self, network: str = "ethereum") -> List[str]:
+        response = requests.get(
+            f"{self.base_url}/dates/available",
+            params={"network": network}
+        )
+        response.raise_for_status()
+        return response.json()
+
+# Usage
+client = AlertScoringClient()
+
+# Get latest scores
+latest = client.get_latest_scores("ethereum")
+print(f"Latest batch: {latest['processing_date']}")
+
+# Get top 100 alerts
+top_100 = client.get_top_rankings(100, "ethereum")
+for ranking in top_100[:10]:
+    print(f"Rank {ranking['rank']}: {ranking['alert_id']}")
+
+# Get metadata
+metadata = client.get_metadata("ethereum")
+print(f"Processing time: {metadata['latencies_ms_total']}ms")
+```
+
+---
 
 ## Rate Limiting
 
-By default, no rate limiting is enforced. For production deployments, consider implementing rate limiting as described in the [Customization Guide](customization.md#adding-rate-limiting).
+Currently, no rate limiting is implemented. For production deployments, consider adding rate limiting middleware.
 
-**Recommended limits:**
-- 100 requests per minute per IP
-- 1000 requests per hour per IP
+## CORS
 
-## Performance Tips
-
-### Batch Processing
-
-Score multiple alerts in a single request for better performance:
+CORS is configured to allow all origins. Update [`aml_miner/api/server.py`](../aml_miner/api/server.py:1) for production use:
 
 ```python
-# Good: Batch processing
-response = requests.post(
-    'http://localhost:8000/score/alerts',
-    json={'alerts': [alert1, alert2, alert3, ...]}
-)
+from fastapi.middleware.cors import CORSMiddleware
 
-# Avoid: Individual requests
-for alert in alerts:
-    response = requests.post(
-        'http://localhost:8000/score/alerts',
-        json={'alerts': [alert]}
-    )
-```
-
-### Connection Pooling
-
-Use connection pooling for multiple requests:
-
-```python
-import requests
-
-session = requests.Session()
-
-for batch in alert_batches:
-    response = session.post(
-        'http://localhost:8000/score/alerts',
-        json={'alerts': batch}
-    )
-```
-
-### Request Timeout
-
-Always set a timeout to prevent hanging:
-
-```python
-response = requests.post(
-    'http://localhost:8000/score/alerts',
-    json={'alerts': alerts},
-    timeout=30  # 30 seconds
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://your-domain.com"],
+    allow_methods=["GET"],
+    allow_headers=["*"],
 )
 ```
 
-### Compression
+## API Versioning
 
-For large payloads, use gzip compression:
+The API is currently at version 1.0.0. Future versions will use URL prefixing (`/v2/scores/alerts/latest`).
 
-```python
-import gzip
-import json
-import requests
+## See Also
 
-data = {'alerts': large_alert_list}
-compressed = gzip.compress(json.dumps(data).encode('utf-8'))
-
-response = requests.post(
-    'http://localhost:8000/score/alerts',
-    data=compressed,
-    headers={
-        'Content-Type': 'application/json',
-        'Content-Encoding': 'gzip'
-    }
-)
-```
-
-### Response Caching
-
-Implement caching for repeated requests:
-
-```python
-from functools import lru_cache
-import hashlib
-import json
-
-@lru_cache(maxsize=1000)
-def get_alert_score(alert_hash):
-    # Cache results for identical alerts
-    pass
-
-alert_hash = hashlib.md5(
-    json.dumps(alert, sort_keys=True).encode()
-).hexdigest()
-```
-
-## Examples
-
-### Python
-
-```python
-import requests
-
-# Score alerts
-response = requests.post(
-    'http://localhost:8000/score/alerts',
-    json={
-        'alerts': [
-            {
-                'alert_id': 'alert-001',
-                'network': 'bitcoin',
-                'address': '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
-                'amount_usd': 50000.0,
-                'transaction_count': 10,
-                'risk_category': 'high_value',
-                'timestamp': '2025-01-15T10:30:00Z'
-            }
-        ]
-    }
-)
-
-if response.status_code == 200:
-    scores = response.json()['scores']
-    for score in scores:
-        print(f"Alert {score['alert_id']}: {score['score']:.4f}")
-```
-
-### JavaScript/Node.js
-
-```javascript
-const axios = require('axios');
-
-async function scoreAlerts(alerts) {
-  try {
-    const response = await axios.post(
-      'http://localhost:8000/score/alerts',
-      { alerts }
-    );
-    
-    return response.data.scores;
-  } catch (error) {
-    console.error('Error scoring alerts:', error.response.data);
-    throw error;
-  }
-}
-
-// Usage
-const alerts = [
-  {
-    alert_id: 'alert-001',
-    network: 'bitcoin',
-    address: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
-    amount_usd: 50000.0,
-    transaction_count: 10,
-    risk_category: 'high_value',
-    timestamp: '2025-01-15T10:30:00Z'
-  }
-];
-
-scoreAlerts(alerts)
-  .then(scores => console.log('Scores:', scores))
-  .catch(err => console.error('Error:', err));
-```
-
-### cURL
-
-```bash
-# Score alerts
-curl -X POST http://localhost:8000/score/alerts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "alerts": [
-      {
-        "alert_id": "alert-001",
-        "network": "bitcoin",
-        "address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
-        "amount_usd": 50000.0,
-        "transaction_count": 10,
-        "risk_category": "high_value",
-        "timestamp": "2025-01-15T10:30:00Z"
-      }
-    ]
-  }'
-
-# Rank alerts
-curl -X POST http://localhost:8000/rank/alerts \
-  -H "Content-Type: application/json" \
-  -d @alerts.json
-
-# Score clusters
-curl -X POST http://localhost:8000/score/clusters \
-  -H "Content-Type: application/json" \
-  -d @clusters.json
-```
-
-### Go
-
-```go
-package main
-
-import (
-    "bytes"
-    "encoding/json"
-    "fmt"
-    "net/http"
-)
-
-type Alert struct {
-    AlertID          string  `json:"alert_id"`
-    Network          string  `json:"network"`
-    Address          string  `json:"address"`
-    AmountUSD        float64 `json:"amount_usd"`
-    TransactionCount int     `json:"transaction_count"`
-    RiskCategory     string  `json:"risk_category"`
-    Timestamp        string  `json:"timestamp"`
-}
-
-type ScoreRequest struct {
-    Alerts []Alert `json:"alerts"`
-}
-
-type ScoreResponse struct {
-    Scores []struct {
-        AlertID      string  `json:"alert_id"`
-        Score        float64 `json:"score"`
-        ModelVersion string  `json:"model_version"`
-    } `json:"scores"`
-}
-
-func scoreAlerts(alerts []Alert) (*ScoreResponse, error) {
-    reqBody := ScoreRequest{Alerts: alerts}
-    jsonData, err := json.Marshal(reqBody)
-    if err != nil {
-        return nil, err
-    }
-
-    resp, err := http.Post(
-        "http://localhost:8000/score/alerts",
-        "application/json",
-        bytes.NewBuffer(jsonData),
-    )
-    if err != nil {
-        return nil, err
-    }
-    defer resp.Body.Close()
-
-    var result ScoreResponse
-    if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-        return nil, err
-    }
-
-    return &result, nil
-}
-```
-
-## Testing
-
-### Health Check
-
-```bash
-# Check if service is running
-curl http://localhost:8000/health
-
-# Expected: {"status":"healthy","version":"1.0.0"}
-```
-
-### Integration Tests
-
-```python
-import unittest
-import requests
-
-class TestAMLMinerAPI(unittest.TestCase):
-    BASE_URL = 'http://localhost:8000'
-    
-    def test_health(self):
-        response = requests.get(f'{self.BASE_URL}/health')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()['status'], 'healthy')
-    
-    def test_score_alerts(self):
-        alerts = [{
-            'alert_id': 'test-001',
-            'network': 'bitcoin',
-            'address': '1A1z...',
-            'amount_usd': 50000.0,
-            'transaction_count': 10,
-            'risk_category': 'high_value',
-            'timestamp': '2025-01-15T10:30:00Z'
-        }]
-        
-        response = requests.post(
-            f'{self.BASE_URL}/score/alerts',
-            json={'alerts': alerts}
-        )
-        
-        self.assertEqual(response.status_code, 200)
-        scores = response.json()['scores']
-        self.assertEqual(len(scores), 1)
-        self.assertIn('score', scores[0])
-        self.assertTrue(0 <= scores[0]['score'] <= 1)
-
-if __name__ == '__main__':
-    unittest.main()
-```
-
-## Monitoring
-
-### Health Checks
-
-Implement regular health checks:
-
-```bash
-# Every 30 seconds
-watch -n 30 'curl -s http://localhost:8000/health'
-```
-
-### Logging
-
-Enable API logging for debugging:
-
-```python
-import logging
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-```
-
-### Metrics
-
-Track key metrics:
-- Request count
-- Response time
-- Error rate
-- Score distribution
-
-## Support
-
-For issues or questions:
-
-1. Check the [Quick Start Guide](quickstart.md)
-2. Review [Troubleshooting](quickstart.md#troubleshooting)
-3. See [Training Guide](training_guide.md) for model-related issues
-4. Open an issue on GitHub
-
-## Related Documentation
-
-- [Quick Start Guide](quickstart.md) - Getting started
-- [Training Guide](training_guide.md) - Training custom models
-- [Customization Guide](customization.md) - Extending the API
-- [README](../README.md) - Project overview
+- **[Quick Start Guide](quickstart.md)** - Setup and first run
+- **[README](../README.md)** - Project overview
+- **[Architecture Docs](../docs/agent/2025-10-26/claude/)** - System architecture

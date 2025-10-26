@@ -1,18 +1,30 @@
+# UV Package Manager Support
+# UV is a fast Python package installer and resolver, 10-100x faster than pip
+# Installation: curl -LsSf https://astral.sh/uv/install.sh | sh
+# Usage:
+#   - Install dependencies: uv sync
+#   - Install with dev dependencies: uv sync --extra dev
+#   - Generate lock file: uv lock
+#   - Install package: uv pip install -e .
+#
+# UV automatically reads this pyproject.toml and is fully compatible
+# with the existing pip-based workflow
+
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "aml-miner-template"
+name = "alert-scoring"
 version = "1.0.0"
-description = "AML Miner Template - A machine learning framework for anti-money laundering alert scoring and ranking"
+description = "Alert Scoring - A flexible machine learning framework for alert scoring and ranking across compliance and risk domains"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
     {name = "AML Miner Team"}
 ]
-keywords = ["aml", "anti-money-laundering", "machine-learning", "fraud-detection", "alert-scoring"]
+keywords = ["alert-scoring", "machine-learning", "compliance", "risk-detection", "ranking"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -40,6 +52,7 @@ dependencies = [
     "pyarrow>=15.0.0",
     "pyyaml>=6.0.1",
     "python-dotenv>=1.0.0",
+    "clickhouse-connect>=0.7.0",
 ]
 
 [project.optional-dependencies]
@@ -54,19 +67,34 @@ dev = [
 ]
 
 [project.scripts]
-aml-miner-serve = "aml_miner.api.server:main"
-aml-miner-train = "aml_miner.training.train_scorer:main"
+alert-scoring-serve = "alert_scoring.api.server:main"
+alert-scoring-train = "alert_scoring.training.train_scorer:main"
 
 [project.urls]
-Homepage = "https://github.com/your-org/aml-miner-template"
-Documentation = "https://github.com/your-org/aml-miner-template#readme"
-Repository = "https://github.com/your-org/aml-miner-template"
+Homepage = "https://github.com/your-org/alert-scoring"
+Documentation = "https://github.com/your-org/alert-scoring#readme"
+Repository = "https://github.com/your-org/alert-scoring"
 
 [tool.setuptools]
-packages = ["aml_miner", "aml_miner.api", "aml_miner.models", "aml_miner.features", "aml_miner.training", "aml_miner.utils", "aml_miner.config"]
+packages = [
+    "alert_scoring",
+    "alert_scoring.api",
+    "alert_scoring.assessment",
+    "alert_scoring.assessment.models",
+    "alert_scoring.assessment.features",
+    "alert_scoring.assessment.training",
+    "alert_scoring.evaluation",
+    "alert_scoring.evaluation.quality",
+    "alert_scoring.evaluation.aggregation",
+    "alert_scoring.evaluation.metrics",
+    "alert_scoring.storage",
+    "alert_scoring.storage.repositories",
+    "alert_scoring.utils",
+    "alert_scoring.config"
+]
 
 [tool.setuptools.package-data]
-aml_miner = ["config/*.yaml"]
+alert_scoring = ["config/*.yaml"]
 
 [tool.black]
 line-length = 100
@@ -115,13 +143,13 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -q --strict-markers --cov=aml_miner --cov-report=term-missing"
+addopts = "-ra -q --strict-markers --cov=alert_scoring --cov-report=term-missing"
 testpaths = ["tests"]
 pythonpath = ["."]
 
 [tool.coverage.run]
-source = ["aml_miner"]
-omit = ["tests/*", "aml_miner/__init__.py"]
+source = ["alert_scoring"]
+omit = ["tests/*", "alert_scoring/__init__.py"]
 
 [tool.coverage.report]
 exclude_lines = [
