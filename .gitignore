@@ -205,3 +205,21 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# AML Miner Template - Project Specific
+logs/
+data/
+trained_models/*.txt
+trained_models/*.json
+*.parquet
+*.csv
+
+# Model artifacts
+models/
+checkpoints/
+
+# Temporary files
+temp/
+tmp/
+.DS_Store
+.pdf

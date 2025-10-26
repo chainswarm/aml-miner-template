@@ -7,236 +7,236 @@
 ## Phase 1: Foundation & Setup ⏳
 
 ### 1.1 Directory Restructuring
-- [ ] Rename `template/` → `aml_miner/`
-- [ ] Create `aml_miner/config/` directory
-- [ ] Create `aml_miner/utils/` directory
-- [ ] Create `trained_models/` directory
-- [ ] Create `scripts/` directory
-- [ ] Create `tests/` directory
-- [ ] Create `docs/` directory
-- [ ] Create `logs/` directory
+- [x] Rename `template/` → `aml_miner/`
+- [x] Create `aml_miner/config/` directory
+- [x] Create `aml_miner/utils/` directory
+- [x] Create `trained_models/` directory
+- [x] Create `scripts/` directory
+- [x] Create `tests/` directory
+- [x] Create `docs/` directory
+- [x] Create `logs/` directory
 
 ### 1.2 Package Initialization
-- [ ] Implement `aml_miner/__init__.py`
-- [ ] Implement `aml_miner/version.py`
+- [x] Implement `aml_miner/__init__.py`
+- [x] Implement `aml_miner/version.py`
 
 ### 1.3 Configuration Files
-- [ ] Implement `pyproject.toml` (complete with all dependencies)
-- [ ] Generate `requirements.txt` from pyproject.toml
-- [ ] Create `.env.example` template
-- [ ] Update `.gitignore` (add logs/, .env, __pycache__, etc.)
+- [x] Implement `pyproject.toml` (complete with all dependencies)
+- [x] Generate `requirements.txt` from pyproject.toml
+- [x] Create `.env.example` template
+- [x] Update `.gitignore` (add logs/, .env, __pycache__, etc.)
 
 ---
 
-## Phase 2: Configuration & Utilities ⏳
+## Phase 2: Configuration & Utilities ✅
 
 ### 2.1 Configuration System
-- [ ] Implement `aml_miner/config/__init__.py`
-- [ ] Implement `aml_miner/config/settings.py` (Pydantic Settings)
-- [ ] Implement `aml_miner/config/model_config.yaml` (hyperparameters)
+- [x] Implement `aml_miner/config/__init__.py`
+- [x] Implement `aml_miner/config/settings.py` (Pydantic Settings)
+- [x] Implement `aml_miner/config/model_config.yaml` (hyperparameters)
 
 ### 2.2 Utilities
-- [ ] Implement `aml_miner/utils/__init__.py`
-- [ ] Implement `aml_miner/utils/determinism.py`
-  - [ ] `set_deterministic_mode()` function
-  - [ ] Seed setting for random, numpy, etc.
-- [ ] Implement `aml_miner/utils/validators.py`
-  - [ ] Input validation functions
-  - [ ] Schema validators
-  - [ ] Error classes
-- [ ] Implement `aml_miner/utils/data_loader.py`
-  - [ ] `load_batch()` function
-  - [ ] Parquet file reading
-  - [ ] Data validation
+- [x] Implement `aml_miner/utils/__init__.py`
+- [x] Implement `aml_miner/utils/determinism.py`
+  - [x] `set_deterministic_mode()` function
+  - [x] Seed setting for random, numpy, etc.
+- [x] Implement `aml_miner/utils/validators.py`
+  - [x] Input validation functions
+  - [x] Schema validators
+  - [x] Error classes
+- [x] Implement `aml_miner/utils/data_loader.py`
+  - [x] `load_batch()` function
+  - [x] Parquet file reading
+  - [x] Data validation
 
 ---
 
-## Phase 3: ML Models ⏳
+## Phase 3: ML Models ✅
 
 ### 3.1 Base Model
-- [ ] Implement `aml_miner/models/__init__.py`
-- [ ] Implement `aml_miner/models/base_model.py`
-  - [ ] `BaseModel` abstract class
-  - [ ] `load_model()` method
-  - [ ] `save_model()` method
-  - [ ] `predict()` abstract method
-  - [ ] `prepare_features()` abstract method
-  - [ ] `create_explanations()` method (SHAP)
-  - [ ] Model versioning logic
-  - [ ] Logging decorators
+- [x] Implement `aml_miner/models/__init__.py`
+- [x] Implement `aml_miner/models/base_model.py`
+  - [x] `BaseModel` abstract class
+  - [x] `load_model()` method
+  - [x] `save_model()` method
+  - [x] `predict()` abstract method
+  - [x] `prepare_features()` abstract method
+  - [x] `create_explanations()` method (SHAP)
+  - [x] Model versioning logic
+  - [x] Logging decorators
 
 ### 3.2 Alert Scorer
-- [ ] Implement `aml_miner/models/alert_scorer.py`
-  - [ ] `AlertScorerModel` class (extends BaseModel)
-  - [ ] `prepare_features()` implementation
-  - [ ] `predict()` implementation
-  - [ ] `create_explanations()` implementation
-  - [ ] Feature names mapping
-  - [ ] Validation logic
+- [x] Implement `aml_miner/models/alert_scorer.py`
+  - [x] `AlertScorerModel` class (extends BaseModel)
+  - [x] `prepare_features()` implementation
+  - [x] `predict()` implementation
+  - [x] `create_explanations()` implementation
+  - [x] Feature names mapping
+  - [x] Validation logic
 
 ### 3.3 Alert Ranker
-- [ ] Implement `aml_miner/models/alert_ranker.py`
-  - [ ] `AlertRankerModel` class (extends BaseModel)
-  - [ ] `prepare_features()` implementation
-  - [ ] `rank_alerts()` method
-  - [ ] `predict()` implementation
+- [x] Implement `aml_miner/models/alert_ranker.py`
+  - [x] `AlertRankerModel` class (extends BaseModel)
+  - [x] `prepare_features()` implementation
+  - [x] `rank_alerts()` method
+  - [x] `predict()` implementation
 
 ### 3.4 Cluster Scorer
-- [ ] Implement `aml_miner/models/cluster_scorer.py`
-  - [ ] `ClusterScorerModel` class (extends BaseModel)
-  - [ ] `prepare_features()` implementation
-  - [ ] `predict()` implementation
-  - [ ] Cluster-specific features
+- [x] Implement `aml_miner/models/cluster_scorer.py`
+  - [x] `ClusterScorerModel` class (extends BaseModel)
+  - [x] `prepare_features()` implementation
+  - [x] `predict()` implementation
+  - [x] Cluster-specific features
 
 ---
 
-## Phase 4: Feature Engineering ⏳
+## Phase 4: Feature Engineering ✅
 
 ### 4.1 Feature Builder
-- [ ] Implement `aml_miner/features/__init__.py`
-- [ ] Implement `aml_miner/features/feature_builder.py`
-  - [ ] `build_alert_features()` function
-  - [ ] `build_network_features()` function
-  - [ ] `build_cluster_features()` function
-  - [ ] `build_temporal_features()` function
-  - [ ] `build_statistical_features()` function
-  - [ ] `build_all_features()` orchestrator
-  - [ ] Feature name standardization
+- [x] Implement `aml_miner/features/__init__.py`
+- [x] Implement `aml_miner/features/feature_builder.py`
+  - [x] `build_alert_features()` function
+  - [x] `build_network_features()` function
+  - [x] `build_cluster_features()` function
+  - [x] `build_temporal_features()` function
+  - [x] `build_statistical_features()` function
+  - [x] `build_all_features()` orchestrator
+  - [x] Feature name standardization
 
 ### 4.2 Feature Selector
-- [ ] Implement `aml_miner/features/feature_selector.py`
-  - [ ] `FeatureSelector` class
-  - [ ] Importance-based selection
-  - [ ] Correlation analysis
-  - [ ] `select_features()` method
-  - [ ] `save_selected_features()` method
+- [x] Implement `aml_miner/features/feature_selector.py`
+  - [x] `FeatureSelector` class
+  - [x] Importance-based selection
+  - [x] Correlation analysis
+  - [x] `select_features()` method
+  - [x] `save_selected_features()` method
 
 ---
 
-## Phase 5: FastAPI Server ⏳
+## Phase 5: FastAPI Server ✅
 
 ### 5.1 API Schemas
-- [ ] Implement `aml_miner/api/__init__.py`
-- [ ] Implement `aml_miner/api/schemas.py`
-  - [ ] `BatchData` Pydantic model
-  - [ ] `AlertData` Pydantic model
-  - [ ] `FeatureData` Pydantic model
-  - [ ] `ClusterData` Pydantic model
-  - [ ] `MoneyFlowData` Pydantic model
-  - [ ] `ScoreResponse` Pydantic model
-  - [ ] `RankResponse` Pydantic model
-  - [ ] `ClusterScoreResponse` Pydantic model
-  - [ ] `HealthResponse` Pydantic model
-  - [ ] `VersionResponse` Pydantic model
+- [x] Implement `aml_miner/api/__init__.py`
+- [x] Implement `aml_miner/api/schemas.py`
+  - [x] `BatchData` Pydantic model
+  - [x] `AlertData` Pydantic model
+  - [x] `FeatureData` Pydantic model
+  - [x] `ClusterData` Pydantic model
+  - [x] `MoneyFlowData` Pydantic model
+  - [x] `ScoreResponse` Pydantic model
+  - [x] `RankResponse` Pydantic model
+  - [x] `ClusterScoreResponse` Pydantic model
+  - [x] `HealthResponse` Pydantic model
+  - [x] `VersionResponse` Pydantic model
 
 ### 5.2 API Routes
-- [ ] Implement `aml_miner/api/routes.py`
-  - [ ] `score_alerts()` handler
-  - [ ] `rank_alerts()` handler
-  - [ ] `score_clusters()` handler
-  - [ ] `health_check()` handler
-  - [ ] `get_version()` handler
-  - [ ] `get_metrics()` handler (optional)
-  - [ ] Error handling
-  - [ ] Request logging
+- [x] Implement `aml_miner/api/routes.py`
+  - [x] `score_alerts()` handler
+  - [x] `rank_alerts()` handler
+  - [x] `score_clusters()` handler
+  - [x] `health_check()` handler
+  - [x] `get_version()` handler
+  - [x] `get_metrics()` handler (optional)
+  - [x] Error handling
+  - [x] Request logging
 
 ### 5.3 Main Server
-- [ ] Implement `aml_miner/api/server.py`
-  - [ ] FastAPI app initialization
-  - [ ] CORS middleware
-  - [ ] `startup_event()` - load models
-  - [ ] `shutdown_event()` - cleanup
-  - [ ] Global exception handlers
-  - [ ] Request/response logging
-  - [ ] `main()` entry point
-  - [ ] Uvicorn configuration
+- [x] Implement `aml_miner/api/server.py`
+  - [x] FastAPI app initialization
+  - [x] CORS middleware
+  - [x] `startup_event()` - load models
+  - [x] `shutdown_event()` - cleanup
+  - [x] Global exception handlers
+  - [x] Request/response logging
+  - [x] `main()` entry point
+  - [x] Uvicorn configuration
 
 ---
 
-## Phase 6: Training Pipelines ⏳
+## Phase 6: Training Pipelines ✅
 
 ### 6.1 Alert Scorer Training
-- [ ] Implement `aml_miner/training/__init__.py`
-- [ ] Implement `aml_miner/training/train_scorer.py`
-  - [ ] `prepare_training_data()` function
-  - [ ] `train_alert_scorer()` function
-  - [ ] Cross-validation logic
-  - [ ] Model evaluation (AUC, precision, recall)
-  - [ ] Model saving
-  - [ ] CLI interface (argparse)
-  - [ ] `main()` entry point
-  - [ ] Logging & metrics
+- [x] Implement `aml_miner/training/__init__.py`
+- [x] Implement `aml_miner/training/train_scorer.py`
+  - [x] `prepare_training_data()` function
+  - [x] `train_alert_scorer()` function
+  - [x] Cross-validation logic
+  - [x] Model evaluation (AUC, precision, recall)
+  - [x] Model saving
+  - [x] CLI interface (argparse)
+  - [x] `main()` entry point
+  - [x] Logging & metrics
 
 ### 6.2 Alert Ranker Training
-- [ ] Implement `aml_miner/training/train_ranker.py`
-  - [ ] `prepare_ranking_data()` function
-  - [ ] `train_alert_ranker()` function
-  - [ ] Query group creation
-  - [ ] NDCG evaluation
-  - [ ] Model saving
-  - [ ] CLI interface
+- [x] Implement `aml_miner/training/train_ranker.py`
+  - [x] `prepare_ranking_data()` function
+  - [x] `train_alert_ranker()` function
+  - [x] Query group creation
+  - [x] NDCG evaluation
+  - [x] Model saving
+  - [x] CLI interface
 
 ### 6.3 Hyperparameter Tuning
-- [ ] Implement `aml_miner/training/hyperparameter_tuner.py`
-  - [ ] `HyperparameterTuner` class
-  - [ ] Optuna integration (or grid search)
-  - [ ] Search space definition
-  - [ ] Objective function
-  - [ ] Cross-validation
-  - [ ] Save best params to YAML
-  - [ ] CLI interface
+- [x] Implement `aml_miner/training/hyperparameter_tuner.py`
+  - [x] `HyperparameterTuner` class
+  - [x] Optuna integration (or grid search)
+  - [x] Search space definition
+  - [x] Objective function
+  - [x] Cross-validation
+  - [x] Save best params to YAML
+  - [x] CLI interface
 
 ---
 
-## Phase 7: Scripts & Utilities ⏳
+## Phase 7: Scripts & Utilities ✅
 
 ### 7.1 Data Scripts
-- [ ] Implement `scripts/download_batch.sh`
-  - [ ] Download SOT batch data
-  - [ ] Command-line arguments (start_date, end_date)
-  - [ ] Validation
-  - [ ] Error handling
+- [x] Implement `scripts/download_batch.sh`
+  - [x] Download SOT batch data
+  - [x] Command-line arguments (start_date, end_date)
+  - [x] Validation
+  - [x] Error handling
 
 ### 7.2 Training Scripts
-- [ ] Implement `scripts/train_models.py`
-  - [ ] Orchestrate all training
-  - [ ] Download data if needed
-  - [ ] Train all models
-  - [ ] Generate training report
-  - [ ] CLI interface
+- [x] Implement `scripts/train_models.py`
+  - [x] Orchestrate all training
+  - [x] Download data if needed
+  - [x] Train all models
+  - [x] Generate training report
+  - [x] CLI interface
 
 ### 7.3 Validation Scripts
-- [ ] Implement `scripts/validate_submission.py`
-  - [ ] Test API locally
-  - [ ] Load sample batch
-  - [ ] Call all endpoints
-  - [ ] Verify responses
-  - [ ] Check determinism
-  - [ ] Measure latency
-  - [ ] Generate validation report
+- [x] Implement `scripts/validate_submission.py`
+  - [x] Test API locally
+  - [x] Load sample batch
+  - [x] Call all endpoints
+  - [x] Verify responses
+  - [x] Check determinism
+  - [x] Measure latency
+  - [x] Generate validation report
 
 ---
 
-## Phase 8: Docker & Deployment ⏳
+## Phase 8: Docker & Deployment ✅
 
 ### 8.1 Docker Configuration
-- [ ] Implement `Dockerfile`
-  - [ ] Multi-stage build
-  - [ ] Python 3.11+ base
-  - [ ] Install dependencies
-  - [ ] Copy application
-  - [ ] Non-root user
-  - [ ] Health check
-  - [ ] CMD uvicorn
+- [x] Implement `Dockerfile`
+  - [x] Multi-stage build
+  - [x] Python 3.13 base
+  - [x] Install dependencies
+  - [x] Copy application
+  - [x] Non-root user
+  - [x] Health check
+  - [x] CMD uvicorn
 
 ### 8.2 Docker Compose
-- [ ] Implement `docker-compose.yml`
-  - [ ] API service definition
-  - [ ] Volume mounts
-  - [ ] Environment variables
-  - [ ] Port mapping
-  - [ ] Health checks
-  - [ ] Restart policy
+- [x] Implement `docker-compose.yml`
+  - [x] API service definition
+  - [x] Volume mounts
+  - [x] Environment variables
+  - [x] Port mapping
+  - [x] Health checks
+  - [x] Restart policy
 
 ---
 
@@ -288,49 +288,49 @@
 
 ---
 
-## Phase 10: Documentation ⏳
+## Phase 10: Documentation ✅
 
 ### 10.1 User Documentation
-- [ ] Write `docs/quickstart.md`
-  - [ ] Installation instructions
-  - [ ] Quick start (5 minutes)
-  - [ ] Run API server
-  - [ ] Test with curl
-  - [ ] Docker deployment
+- [x] Write `docs/quickstart.md`
+  - [x] Installation instructions
+  - [x] Quick start (5 minutes)
+  - [x] Run API server
+  - [x] Test with curl
+  - [x] Docker deployment
 
-- [ ] Write `docs/training_guide.md`
-  - [ ] Download training data
-  - [ ] Train custom models
-  - [ ] Hyperparameter tuning
-  - [ ] Model evaluation
-  - [ ] Best practices
+- [x] Write `docs/training_guide.md`
+  - [x] Download training data
+  - [x] Train custom models
+  - [x] Hyperparameter tuning
+  - [x] Model evaluation
+  - [x] Best practices
 
-- [ ] Write `docs/customization.md`
-  - [ ] Add custom features
-  - [ ] Modify model architecture
-  - [ ] Change hyperparameters
-  - [ ] Extend API endpoints
-  - [ ] Advanced techniques
+- [x] Write `docs/customization.md`
+  - [x] Add custom features
+  - [x] Modify model architecture
+  - [x] Change hyperparameters
+  - [x] Extend API endpoints
+  - [x] Advanced techniques
 
-- [ ] Write `docs/api_reference.md`
-  - [ ] Complete API documentation
-  - [ ] All endpoints
-  - [ ] Request/response schemas
-  - [ ] Examples
-  - [ ] Error codes
+- [x] Write `docs/api_reference.md`
+  - [x] Complete API documentation
+  - [x] All endpoints
+  - [x] Request/response schemas
+  - [x] Examples
+  - [x] Error codes
 
 ### 10.2 Main README
-- [ ] Write `README.md`
-  - [ ] Project overview
-  - [ ] Architecture diagram
-  - [ ] Quick start (copy from docs)
-  - [ ] API usage examples
-  - [ ] Training workflow
-  - [ ] Contributing guidelines
-  - [ ] License
+- [x] Write `README.md`
+  - [x] Project overview
+  - [x] Architecture diagram
+  - [x] Quick start (copy from docs)
+  - [x] API usage examples
+  - [x] Training workflow
+  - [x] Contributing guidelines
+  - [x] License
 
 ### 10.3 Additional Docs
-- [ ] Create `LICENSE` file (MIT)
+- [x] Create `LICENSE` file (MIT)
 - [ ] Create `CONTRIBUTING.md` (optional)
 - [ ] Create `CHANGELOG.md` (optional)
 
@@ -411,20 +411,20 @@ All items must be checked before release:
 
 ## Progress Summary
 
-**Phase 1**: ⬜ 0/13 (0%)  
-**Phase 2**: ⬜ 0/8 (0%)  
-**Phase 3**: ⬜ 0/15 (0%)  
-**Phase 4**: ⬜ 0/12 (0%)  
-**Phase 5**: ⬜ 0/21 (0%)  
-**Phase 6**: ⬜ 0/17 (0%)  
-**Phase 7**: ⬜ 0/15 (0%)  
-**Phase 8**: ⬜ 0/13 (0%)  
-**Phase 9**: ⬜ 0/23 (0%)  
-**Phase 10**: ⬜ 0/14 (0%)  
-**Phase 11**: ⬜ 0/7 (0%)  
-**Phase 12**: ⬜ 0/15 (0%)  
+**Phase 1**: ✅ 13/13 (100%)
+**Phase 2**: ✅ 11/11 (100%)
+**Phase 3**: ✅ 15/15 (100%)
+**Phase 4**: ✅ 12/12 (100%)
+**Phase 5**: ✅ 21/21 (100%)
+**Phase 6**: ✅ 17/17 (100%)
+**Phase 7**: ✅ 15/15 (100%)
+**Phase 8**: ✅ 13/13 (100%)
+**Phase 9**: ⬜ 0/23 (0%)
+**Phase 10**: ✅ 13/14 (93%) - Core documentation complete
+**Phase 11**: ⬜ 0/7 (0%)
+**Phase 12**: ⬜ 0/15 (0%)
 
-**Overall**: ⬜ 0/173 tasks (0%)
+**Overall**: ✅ 130/176 tasks (73.9%)
 
 ---
 

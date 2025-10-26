@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  # AML Miner API Service
+  aml-miner-api:
+    # Build from local Dockerfile
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
+    # Container name
+    container_name: aml-miner-api
+    
+    # Port mapping: host:container
+    ports:
+      - "8000:8000"
+    
+    # Volume mounts for persistent data and logs
+    volumes:
+      # Mount trained models directory
+      # Models trained locally can be used in the container
+      - ./trained_models:/app/trained_models:ro
+      
+      # Mount logs directory for persistence
+      # Logs will be written to host machine
+      - ./logs:/app/logs
+      
+      # Optional: Mount data directory if needed
+      # - ./data:/app/data:ro
+    
+    # Environment variables
+    # Load from .env file in project root
+    env_file:
+      - .env
+    
+    # Additional environment variables
+    environment:
+      # API configuration
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_WORKERS=1
+      
+      # Logging
+      - LOG_LEVEL=INFO
+      
+      # Random seed for determinism
+      - RANDOM_SEED=42
+      
+      # Model paths (relative to /app in container)
+      - ALERT_SCORER_PATH=/app/trained_models/alert_scorer.txt
+      - ALERT_RANKER_PATH=/app/trained_models/alert_ranker.txt
+      - CLUSTER_SCORER_PATH=/app/trained_models/cluster_scorer.txt
+    
+    # Health check configuration
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 3s
+      start_period: 40s
+      retries: 3
+    
+    # Restart policy
+    # Will restart unless explicitly stopped
+    restart: unless-stopped
+    
+    # Resource limits (optional but recommended for production)
+    deploy:
+      resources:
+        limits:
+          # Maximum CPU usage (1.0 = 1 CPU core)
+          cpus: '2.0'
+          # Maximum memory usage
+          memory: 4G
+        reservations:
+          # Minimum guaranteed resources
+          cpus: '0.5'
+          memory: 1G
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Network configuration
+    networks:
+      - aml-miner-network
+
+# Network definition
+networks:
+  aml-miner-network:
+    driver: bridge
+
+# Optional: Volumes for data persistence
+# Uncomment if you want Docker-managed volumes instead of bind mounts
+# volumes:
+#   trained-models:
+#   logs:
