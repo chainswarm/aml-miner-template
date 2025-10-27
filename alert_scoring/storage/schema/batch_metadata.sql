@@ -1,6 +1,5 @@
 CREATE TABLE IF NOT EXISTS batch_metadata (
     processing_date Date,
-    network String,
     processed_at DateTime,
     input_counts_alerts Int32,
     input_counts_features Int32,
@@ -19,6 +18,6 @@ CREATE TABLE IF NOT EXISTS batch_metadata (
     error_message String DEFAULT '',
     created_at DateTime DEFAULT now()
 ) ENGINE = MergeTree()
-PARTITION BY (network, toYYYYMM(processing_date))
-ORDER BY (processing_date, network)
+PARTITION BY (toYYYYMM(processing_date))
+ORDER BY (processing_date)
 SETTINGS index_granularity = 8192;

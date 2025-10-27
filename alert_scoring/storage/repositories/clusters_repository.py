@@ -7,25 +7,6 @@ from alert_scoring.storage.repositories.base_repository import BaseRepository
 from alert_scoring.storage.utils import rows_to_pydantic_list
 
 
-class Cluster(BaseModel):
-    window_days: int
-    processing_date: str
-    network: str
-    cluster_id: str
-    cluster_type: str
-    primary_address: str = ""
-    pattern_id: str = ""
-    primary_alert_id: str
-    related_alert_ids: List[str]
-    addresses_involved: List[str]
-    total_alerts: int
-    total_volume_usd: float
-    severity_max: str = "MEDIUM"
-    confidence_avg: float
-    earliest_alert_timestamp: int
-    latest_alert_timestamp: int
-
-
 class ClustersRepository(BaseRepository):
     @classmethod
     def schema(cls) -> str:

@@ -7,14 +7,6 @@ from alert_scoring.storage.repositories.base_repository import BaseRepository
 from alert_scoring.storage.utils import rows_to_pydantic_list
 
 
-class ClusterScoreData(BaseModel):
-    processing_date: str
-    network: str
-    cluster_id: str
-    score: float
-    model_version: str
-
-
 class ClusterScoresRepository(BaseRepository):
     @classmethod
     def schema(cls) -> str:

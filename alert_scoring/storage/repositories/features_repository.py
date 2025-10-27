@@ -7,15 +7,6 @@ from alert_scoring.storage.repositories.base_repository import BaseRepository
 from alert_scoring.storage.utils import rows_to_pydantic_list
 
 
-class Feature(BaseModel):
-    processing_date: str
-    network: str
-    address: str
-    feature_name: str
-    feature_value: float
-    feature_metadata: str = ""
-
-
 class FeaturesRepository(BaseRepository):
     @classmethod
     def schema(cls) -> str:

@@ -7,14 +7,6 @@ from alert_scoring.storage.repositories.base_repository import BaseRepository
 from alert_scoring.storage.utils import rows_to_pydantic_list
 
 
-class AlertRanking(BaseModel):
-    processing_date: str
-    network: str
-    alert_id: str
-    rank: int
-    model_version: str
-
-
 class RankingsRepository(BaseRepository):
     @classmethod
     def schema(cls) -> str:

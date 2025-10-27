@@ -1,7 +1,6 @@
 CREATE TABLE IF NOT EXISTS raw_clusters (
     window_days Int32,
     processing_date Date,
-    network String,
     cluster_id String,
     cluster_type String,
     primary_address String DEFAULT '',
@@ -17,6 +16,6 @@ CREATE TABLE IF NOT EXISTS raw_clusters (
     latest_alert_timestamp Int64,
     created_at DateTime DEFAULT now()
 ) ENGINE = MergeTree()
-PARTITION BY (network, toYYYYMM(processing_date))
-ORDER BY (processing_date, network, cluster_id)
+PARTITION BY (toYYYYMM(processing_date))
+ORDER BY (processing_date, cluster_id)
 SETTINGS index_granularity = 8192;

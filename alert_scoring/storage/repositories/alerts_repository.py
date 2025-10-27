@@ -1,29 +1,10 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 import pandas as pd
 from pydantic import BaseModel
 from loguru import logger
 
 from alert_scoring.storage.repositories.base_repository import BaseRepository
-from alert_scoring.storage.utils import rows_to_pydantic_list
-
-
-class Alert(BaseModel):
-    window_days: int
-    processing_date: str
-    network: str
-    alert_id: str
-    address: str
-    typology_type: str
-    pattern_id: str = ""
-    pattern_type: str = ""
-    severity: str = "MEDIUM"
-    suspected_address_type: str = "unknown"
-    suspected_address_subtype: str = ""
-    alert_confidence_score: float
-    description: str
-    volume_usd: float = 0
-    evidence_json: str
-    risk_indicators: List[str]
+from alert_scoring.storage.utils import rows_to_pydantic_list, row_to_dict
 
 
 class AlertsRepository(BaseRepository):
@@ -70,7 +51,7 @@ class AlertsRepository(BaseRepository):
         
         logger.info(f"Inserted {len(alerts_df)} alerts for {processing_date}/{network}")
     
-    def get_alerts(self, processing_date: str, network: str) -> List[Alert]:
+    def get_alerts(self, processing_date: str, network: str) -> List[Dict]:
         query = f'''
             SELECT window_days, processing_date, network, alert_id, address, typology_type,
                    pattern_id, pattern_type, severity, suspected_address_type, 
@@ -82,12 +63,7 @@ class AlertsRepository(BaseRepository):
         '''
         
         result = self.client.query(query, {'date': processing_date, 'network': network})
-        
-        return rows_to_pydantic_list(
-            Alert,
-            result.result_rows,
-            result.column_names
-        )
+        return [row in row_to_dict(row, result.column_names) for row in result.result_rows]
     
     def get_latest_date(self, network: str) -> Optional[str]:
         query = f'''

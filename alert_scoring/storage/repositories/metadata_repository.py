@@ -7,26 +7,6 @@ from alert_scoring.storage.repositories.base_repository import BaseRepository
 from alert_scoring.storage.utils import rows_to_pydantic_list
 
 
-class BatchMetadata(BaseModel):
-    processing_date: str
-    network: str
-    processed_at: datetime
-    input_counts_alerts: int
-    input_counts_features: int
-    input_counts_clusters: int
-    output_counts_alert_scores: int
-    output_counts_alert_rankings: int
-    output_counts_cluster_scores: int
-    latencies_ms_alert_scoring: int
-    latencies_ms_alert_ranking: int
-    latencies_ms_cluster_scoring: int
-    latencies_ms_total: int
-    model_versions_alert_scorer: str
-    model_versions_alert_ranker: str
-    model_versions_cluster_scorer: str
-    status: str = "PROCESSING"
-    error_message: str = ""
-
 
 class MetadataRepository(BaseRepository):
     @classmethod

@@ -76,7 +76,7 @@ COPY --chown=miner:miner pyproject.toml ./
 
 # Copy trained models directory structure
 # Models can be mounted as volume at runtime if not present at build time
-COPY --chown=miner:miner trained_models ./trained_models/
+COPY --chown=miner:miner data/trained_models ./trained_models/
 
 # Create .env file placeholder
 RUN touch .env && chown miner:miner .env

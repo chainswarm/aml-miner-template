@@ -1,7 +1,6 @@
 CREATE TABLE IF NOT EXISTS raw_alerts (
     window_days Int32,
     processing_date Date,
-    network String,
     alert_id String,
     address String,
     typology_type String,
@@ -17,8 +16,8 @@ CREATE TABLE IF NOT EXISTS raw_alerts (
     risk_indicators Array(String),
     created_at DateTime DEFAULT now()
 ) ENGINE = MergeTree()
-PARTITION BY (network, toYYYYMM(processing_date))
-ORDER BY (processing_date, network, alert_id)
+PARTITION BY (toYYYYMM(processing_date))
+ORDER BY (processing_date, alert_id)
 SETTINGS index_granularity = 8192;
 
 CREATE INDEX IF NOT EXISTS idx_alert_id ON raw_alerts(alert_id) TYPE bloom_filter GRANULARITY 1;
