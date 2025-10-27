@@ -84,7 +84,7 @@ class ClientFactory:
     def __init__(self, connection_params: dict):
         self.connection_params = connection_params
         self.client = None
-    
+
     def _get_client(self) -> Client:
         self.client = get_client(
             host=self.connection_params['host'],
@@ -93,8 +93,13 @@ class ClientFactory:
             password=self.connection_params['password'],
             database=self.connection_params['database'],
             settings={
-                'output_format_parquet_compression_method': 'zstd'
+                'output_format_parquet_compression_method': 'zstd',
+                'async_insert': 0,
+                'wait_for_async_insert': 1,
+                'max_execution_time': 300,
+                'max_query_size': 100000
             }
+
         )
         return self.client
     
