@@ -383,14 +383,12 @@ if "__main__" == __name__:
     connection_params = get_connection_params(args.network)
     client_factory = ClientFactory(connection_params)
 
-    s3_endpoint = os.getenv('S3_ENDPOINT')
-    s3_access_key = os.getenv('S3_ACCESS_KEY')
-    s3_secret_key = os.getenv('S3_SECRET_KEY')
-    s3_bucket = os.getenv('S3_BUCKET')
-    s3_region = os.getenv('S3_REGION', 'us-east-1')
+    s3_endpoint = os.getenv('RISK_SCORING_S3_ENDPOINT')
+    s3_bucket = os.getenv('RISK_SCORING_S3_BUCKET')
+    s3_region = os.getenv('RISK_SCORING_S3_REGION', 'nl-ams')
 
-    if not all([s3_endpoint, s3_access_key, s3_secret_key, s3_bucket]):
-        logger.critical("Missing required S3 configuration. Provide via command line or .env file")
+    if not all([s3_endpoint, s3_bucket]):
+        logger.critical("Missing required S3 configuration (RISK_SCORING_S3_ENDPOINT, RISK_SCORING_S3_BUCKET)")
         import sys
         sys.exit(1)
 
@@ -399,12 +397,14 @@ if "__main__" == __name__:
         migrate_schema.create_database(args.network)
         migrate_schema.run_migrations()
 
+        from botocore import UNSIGNED
+        from botocore.config import Config
+        
         s3_client = boto3.client(
             's3',
             endpoint_url=s3_endpoint,
-            aws_access_key_id=s3_access_key,
-            aws_secret_access_key=s3_secret_key,
-            region_name=s3_region
+            region_name=s3_region,
+            config=Config(signature_version=UNSIGNED)
         )
 
         logger.info(f"Connected to S3: {s3_endpoint}")
