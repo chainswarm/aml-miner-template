@@ -1,12 +1,15 @@
 import argparse
 import os
 from abc import ABC
+from pathlib import Path
 import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 from loguru import logger
 from packages import setup_logger, terminate_event
 from packages.storage import get_connection_params, ClientFactory, MigrateSchema, create_database
+
+PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
 
 
 class SOTDataIngestion(ABC):
@@ -20,7 +23,7 @@ class SOTDataIngestion(ABC):
         self.s3_client = s3_client
         self.bucket = bucket
         self.network = network
-        self.local_dir = os.path.join('data', 'input', network)
+        self.local_dir = PROJECT_ROOT / 'data' / 'input' / 'risk-scoring' / network / processing_date / f'{days}d'
         self.s3_prefix = f"{network}/{processing_date}/{days}d"
         os.makedirs(self.local_dir, exist_ok=True)
 
@@ -89,8 +92,9 @@ class SOTDataIngestion(ABC):
             
             required_columns = {
                 'raw_alerts': ['alert_id', 'processing_date', 'window_days', 'address'],
-                'raw_features': ['processing_date', 'address', 'feature_name', 'feature_value'],
-                'raw_clusters': ['cluster_id', 'processing_date', 'window_days']
+                'raw_features': ['processing_date', 'window_days', 'address'],
+                'raw_clusters': ['cluster_id', 'processing_date', 'window_days'],
+                'raw_money_flows': ['from_address', 'to_address', 'processing_date', 'window_days']
             }
             
             if expected_table in required_columns:
@@ -141,6 +145,7 @@ class SOTDataIngestion(ABC):
                 SELECT 'raw_features' as table
                 FROM raw_features
                 WHERE processing_date = '{self.processing_date}'
+                  AND window_days = {self.days}
                 LIMIT 1
                 
                 UNION ALL
@@ -150,17 +155,25 @@ class SOTDataIngestion(ABC):
                 WHERE processing_date = '{self.processing_date}'
                   AND window_days = {self.days}
                 LIMIT 1
+                
+                UNION ALL
+                
+                SELECT 'raw_money_flows' as table
+                FROM raw_money_flows
+                WHERE processing_date = '{self.processing_date}'
+                  AND window_days = {self.days}
+                LIMIT 1
             )
         """
         
         result = self.client.query(validation_query)
         tables_with_data = result.result_rows[0][0] if result.result_rows else 0
         
-        if tables_with_data == 3:
+        if tables_with_data == 4:
             logger.success(f"Data already fully ingested for {self.processing_date} (window: {self.days} days)")
             return
         
-        logger.info(f"Found data in {tables_with_data}/3 tables")
+        logger.info(f"Found data in {tables_with_data}/4 tables")
         
         if terminate_event.is_set():
             logger.warning("Termination requested after data validation check")
@@ -168,12 +181,13 @@ class SOTDataIngestion(ABC):
         
         if tables_with_data > 0:
             logger.info("Step 2/6: Cleaning up partial data")
-            logger.warning(f"Partial data detected ({tables_with_data}/3 tables). Cleaning up...")
+            logger.warning(f"Partial data detected ({tables_with_data}/4 tables). Cleaning up...")
             
             cleanup_queries = [
                 f"ALTER TABLE raw_alerts DELETE WHERE processing_date = '{self.processing_date}' AND window_days = {self.days}",
-                f"ALTER TABLE raw_features DELETE WHERE processing_date = '{self.processing_date}'",
-                f"ALTER TABLE raw_clusters DELETE WHERE processing_date = '{self.processing_date}' AND window_days = {self.days}"
+                f"ALTER TABLE raw_features DELETE WHERE processing_date = '{self.processing_date}' AND window_days = {self.days}",
+                f"ALTER TABLE raw_clusters DELETE WHERE processing_date = '{self.processing_date}' AND window_days = {self.days}",
+                f"ALTER TABLE raw_money_flows DELETE WHERE processing_date = '{self.processing_date}' AND window_days = {self.days}"
             ]
             
             for query in cleanup_queries:
@@ -211,22 +225,18 @@ class SOTDataIngestion(ABC):
         for table, base_name in [
             ('raw_alerts', 'alerts'),
             ('raw_features', 'features'),
-            ('raw_clusters', 'clusters')
+            ('raw_clusters', 'clusters'),
+            ('raw_money_flows', 'money_flows')
         ]:
-            file_with_days = f'{base_name}_{self.processing_date}_{self.days}d.parquet'
-            file_without_days = f'{base_name}_{self.processing_date}.parquet'
+            filename = f'{base_name}.parquet'
+            file_path = self.local_dir / filename
             
-            path_with_days = os.path.join(self.local_dir, file_with_days)
-            path_without_days = os.path.join(self.local_dir, file_without_days)
-            
-            if os.path.exists(path_with_days):
-                ingestion_files[table] = file_with_days
-            elif os.path.exists(path_without_days):
-                ingestion_files[table] = file_without_days
-            else:
+            if not os.path.exists(file_path):
                 raise FileNotFoundError(
-                    f"Expected parquet file not found. Tried: {file_with_days}, {file_without_days}"
+                    f"Expected parquet file not found: {file_path}"
                 )
+            
+            ingestion_files[table] = filename
         
         validation_failed = []
         for table, filename in ingestion_files.items():
@@ -234,9 +244,9 @@ class SOTDataIngestion(ABC):
                 logger.warning("Termination requested during validation")
                 return
                 
-            file_path = os.path.join(self.local_dir, filename)
+            file_path = self.local_dir / filename
             
-            if not self._validate_parquet_file(file_path, table):
+            if not self._validate_parquet_file(str(file_path), table):
                 validation_failed.append(filename)
         
         if validation_failed:
@@ -256,14 +266,14 @@ class SOTDataIngestion(ABC):
                 logger.warning(f"Termination requested during ingestion (completed: {list(ingestion_files.keys())[:list(ingestion_files.keys()).index(table)]})")
                 return
                 
-            file_path = os.path.join(self.local_dir, filename)
+            file_path = self.local_dir / filename
             
             logger.info(f"Ingesting {filename} into {table}")
             
             try:
                 self.client.insert_file(
                     table=table,
-                    file_path=file_path,
+                    file_path=str(file_path),
                     fmt='Parquet'
                 )
                 
@@ -294,12 +304,21 @@ class SOTDataIngestion(ABC):
                 'raw_features' as table, COUNT(*) as count
             FROM raw_features
             WHERE processing_date = '{self.processing_date}'
+              AND window_days = {self.days}
             
             UNION ALL
             
             SELECT
                 'raw_clusters' as table, COUNT(*) as count
             FROM raw_clusters
+            WHERE processing_date = '{self.processing_date}'
+              AND window_days = {self.days}
+            
+            UNION ALL
+            
+            SELECT
+                'raw_money_flows' as table, COUNT(*) as count
+            FROM raw_money_flows
             WHERE processing_date = '{self.processing_date}'
               AND window_days = {self.days}
         """
@@ -326,17 +345,17 @@ class SOTDataIngestion(ABC):
         )
 
     def _download_file(self, s3_key: str) -> str:
-        filename = os.path.basename(s3_key)
-        local_path = os.path.join(self.local_dir, filename)
+        local_path = PROJECT_ROOT / 'data' / 'input' / 'risk-scoring' / s3_key
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
 
         logger.info(f"Downloading s3://{self.bucket}/{s3_key} to {local_path}")
 
         try:
-            self.s3_client.download_file(self.bucket, s3_key, local_path)
+            self.s3_client.download_file(self.bucket, s3_key, str(local_path))
 
             file_size_mb = os.path.getsize(local_path) / (1024 * 1024)
-            logger.success(f"Downloaded {filename} ({file_size_mb:.2f} MB)")
-            return local_path
+            logger.success(f"Downloaded {os.path.basename(s3_key)} ({file_size_mb:.2f} MB)")
+            return str(local_path)
 
         except ClientError as e:
             logger.error(f"Failed to download {s3_key}: {e}")
