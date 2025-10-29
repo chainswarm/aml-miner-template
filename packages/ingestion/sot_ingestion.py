@@ -1,5 +1,7 @@
 import argparse
 import os
+import json
+import hashlib
 from abc import ABC
 from pathlib import Path
 import boto3
@@ -27,6 +29,27 @@ class SOTDataIngestion(ABC):
         self.s3_prefix = f"{network}/{processing_date}/{days}d"
         os.makedirs(self.local_dir, exist_ok=True)
 
+    def _calculate_md5(self, file_path: str) -> str:
+        md5_hash = hashlib.md5()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                md5_hash.update(chunk)
+        return md5_hash.hexdigest()
+
+    def _verify_checksum(self, file_path: str, expected_checksum: str) -> bool:
+        actual_checksum = self._calculate_md5(file_path)
+        if actual_checksum != expected_checksum:
+            logger.error(
+                f"Checksum mismatch for {os.path.basename(file_path)}",
+                extra={
+                    "expected": expected_checksum,
+                    "actual": actual_checksum
+                }
+            )
+            return False
+        logger.success(f"Checksum verified for {os.path.basename(file_path)}")
+        return True
+
     def _download_all(self) -> int:
         try:
             response = self.s3_client.list_objects_v2(
@@ -38,11 +61,25 @@ class SOTDataIngestion(ABC):
                 logger.warning(f"No files found in S3 at {self.s3_prefix}")
                 return 0
 
+            meta_key = f"{self.s3_prefix}/META.json"
+            meta_file_path = self.local_dir / "META.json"
+            
+            logger.info("Downloading META.json")
+            self._download_file(meta_key)
+            
+            if not os.path.exists(meta_file_path):
+                raise FileNotFoundError(f"META.json not found after download: {meta_file_path}")
+            
+            with open(meta_file_path, 'r') as f:
+                metadata = json.load(f)
+            
+            logger.info(f"Loaded metadata with {len(metadata.get('files', {}))} file entries")
+            
             all_files = [obj['Key'] for obj in response['Contents'] if obj['Key'].endswith('.parquet')]
             
             files_to_download = []
             for s3_key in all_files:
-                    files_to_download.append(s3_key)
+                files_to_download.append(s3_key)
             
             if not files_to_download:
                 raise ValueError(f"No parquet files found for {self.processing_date}, days={self.days}")
@@ -56,7 +93,16 @@ class SOTDataIngestion(ABC):
                     return downloaded_count
                     
                 try:
-                    self._download_file(s3_key)
+                    local_path = self._download_file(s3_key)
+                    
+                    filename = os.path.basename(s3_key)
+                    if filename in metadata.get('files', {}):
+                        expected_checksum = metadata['files'][filename]['md5']
+                        if not self._verify_checksum(local_path, expected_checksum):
+                            raise ValueError(f"Checksum verification failed for {filename}")
+                    else:
+                        logger.warning(f"No checksum found in META.json for {filename}")
+                    
                     downloaded_count += 1
                 except Exception as e:
                     logger.error(f"Failed to download {s3_key}: {e}")
@@ -219,6 +265,13 @@ class SOTDataIngestion(ABC):
             logger.warning("Termination requested after download")
             return
         
+        logger.info("Downloading address labels")
+        has_address_labels = self._download_address_labels()
+        
+        if terminate_event.is_set():
+            logger.warning("Termination requested after address labels download")
+            return
+        
         logger.info("Validating parquet files")
         
         ingestion_files = {}
@@ -291,6 +344,14 @@ class SOTDataIngestion(ABC):
             logger.warning("Termination requested after ingestion")
             return
         
+        if has_address_labels:
+            logger.info("Ingesting address labels")
+            self._ingest_address_labels()
+        
+        if terminate_event.is_set():
+            logger.warning("Termination requested after address labels ingestion")
+            return
+        
         logger.info("Verifying ingestion")
         
         verify_query = f"""
@@ -361,6 +422,56 @@ class SOTDataIngestion(ABC):
 
         except ClientError as e:
             logger.error(f"Failed to download {s3_key}: {e}")
+            raise
+
+    def _download_address_labels(self) -> bool:
+        s3_key = f"address-labels/{self.network}/address_labels_{self.processing_date}.parquet"
+        local_path = self.local_dir / 'address_labels.parquet'
+        
+        try:
+            logger.info(f"Downloading address labels from s3://{self.bucket}/{s3_key}")
+            self.s3_client.download_file(self.bucket, s3_key, str(local_path))
+            
+            file_size_mb = os.path.getsize(local_path) / (1024 * 1024)
+            logger.success(f"Downloaded address_labels.parquet ({file_size_mb:.2f} MB)")
+            return True
+            
+        except ClientError as e:
+            if e.response['Error']['Code'] == '404':
+                logger.warning(f"Address labels file not found at {s3_key}")
+                return False
+            logger.error(f"Failed to download address labels: {e}")
+            raise
+
+    def _ingest_address_labels(self):
+        file_path = self.local_dir / 'address_labels.parquet'
+        
+        if not os.path.exists(file_path):
+            logger.warning("Address labels file not found, skipping ingestion")
+            return
+        
+        logger.info("Ingesting address_labels.parquet into raw_address_labels")
+        
+        try:
+            import pandas as pd
+            df = pd.read_parquet(file_path)
+            
+            if df.empty:
+                logger.warning("Address labels file is empty, skipping ingestion")
+                return
+            
+            df['processing_date'] = pd.to_datetime(self.processing_date)
+            df['window_days'] = self.days
+            
+            if 'network' not in df.columns:
+                df['network'] = self.network
+            
+            self.client.insert_df(table='raw_address_labels', df=df)
+            
+            logger.success(f"Ingested {len(df):,} address label records into raw_address_labels")
+            
+        except Exception as e:
+            logger.error(f"Failed to ingest address labels: {e}")
             raise
 
 if __name__ == "__main__":

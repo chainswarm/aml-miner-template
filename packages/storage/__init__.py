@@ -131,10 +131,12 @@ class MigrateSchema:
             "raw_features.sql",
             "raw_clusters.sql",
             "raw_money_flows.sql",
+            "raw_address_labels.sql",
             "alert_scores.sql",
             "alert_rankings.sql",
             "cluster_scores.sql",
             "batch_metadata.sql",
+            "trained_models.sql",
         ]
         
         for schema_file in schemas:
