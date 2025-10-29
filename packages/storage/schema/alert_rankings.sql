@@ -1,10 +1,10 @@
-CREATE TABLE IF NOT EXISTS risk_scoring_cluster_scores (
+CREATE TABLE IF NOT EXISTS alert_rankings (
     processing_date Date,
-    cluster_id String,
-    score Float64,
+    alert_id String,
+    rank Int32,
     model_version String,
     created_at DateTime DEFAULT now()
 ) ENGINE = MergeTree()
 PARTITION BY (toYYYYMM(processing_date))
-ORDER BY (processing_date, cluster_id)
+ORDER BY (processing_date, rank)
 SETTINGS index_granularity = 8192;

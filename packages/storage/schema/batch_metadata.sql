@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS risk_scoring_batch_metadata (
+CREATE TABLE IF NOT EXISTS batch_metadata (
     processing_date Date,
     processed_at DateTime,
     input_counts_alerts Int32,

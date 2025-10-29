@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS risk_scoring_raw_clusters (
+CREATE TABLE IF NOT EXISTS raw_clusters (
     window_days Int32,
     processing_date Date,
     cluster_id String,
