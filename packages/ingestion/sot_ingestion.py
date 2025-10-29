@@ -25,8 +25,8 @@ class SOTDataIngestion(ABC):
         self.s3_client = s3_client
         self.bucket = bucket
         self.network = network
-        self.local_dir = PROJECT_ROOT / 'data' / 'input' / 'risk-scoring' / 'snapshots' / network / processing_date
-        self.s3_prefix = f"snapshots/{network}/{processing_date}"
+        self.local_dir = PROJECT_ROOT / 'data' / 'input' / 'risk-scoring' / 'snapshots' / network / processing_date / str(days)
+        self.s3_prefix = f"snapshots/{network}/{processing_date}/{days}"
         os.makedirs(self.local_dir, exist_ok=True)
 
     def _calculate_md5(self, file_path: str) -> str:
@@ -466,6 +466,9 @@ class SOTDataIngestion(ABC):
             
             if 'network' not in df.columns:
                 df['network'] = self.network
+            
+            columns_to_drop = ['created_timestamp', 'updated_timestamp']
+            df = df.drop(columns=[col for col in columns_to_drop if col in df.columns])
             
             self.client.insert_df(table='raw_address_labels', df=df)
             

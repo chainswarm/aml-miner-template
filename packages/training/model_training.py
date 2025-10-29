@@ -115,19 +115,12 @@ class ModelTraining(ABC):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Model training")
-    parser.add_argument('--network', type=str, required=True,
-                       help='Network identifier (ethereum, bitcoin, etc.)')
-    parser.add_argument('--start-date', type=str, required=True,
-                       help='Start processing_date (YYYY-MM-DD)')
-    parser.add_argument('--end-date', type=str, required=True,
-                       help='End processing_date (YYYY-MM-DD)')
-    parser.add_argument('--model-type', type=str, default='alert_scorer',
-                       choices=['alert_scorer', 'alert_ranker', 'cluster_scorer'],
-                       help='Type of model to train')
-    parser.add_argument('--window-days', type=int, default=7,
-                       help='Window days to filter (7, 30, 90)')
-    parser.add_argument('--output-dir', type=Path, default=None,
-                       help='Output directory for models')
+    parser.add_argument('--network', type=str, required=True, help='Network identifier (ethereum, bitcoin, etc.)')
+    parser.add_argument('--start-date', type=str, required=True, help='Start processing_date (YYYY-MM-DD)')
+    parser.add_argument('--end-date', type=str, required=True, help='End processing_date (YYYY-MM-DD)')
+    parser.add_argument('--model-type', type=str, default='alert_scorer', choices=['alert_scorer', 'alert_ranker', 'cluster_scorer'], help='Type of model to train')
+    parser.add_argument('--window-days', type=int, default=7, help='Window days to filter (7, 30, 90)')
+    parser.add_argument('--output-dir', type=Path, default=None, help='Output directory for models')
     args = parser.parse_args()
     
     service_name = f'{args.network}-{args.model_type}-training'

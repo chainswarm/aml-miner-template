@@ -8,14 +8,14 @@ Updated ingestion code to match the new S3 folder structure for the risk-scoring
 
 ```
 s3://risk-scoring/
-├── snapshots/{network}/{processing_date}/  # Risk assessment snapshots
+├── snapshots/{network}/{processing_date}/{window_days}/  # Risk assessment snapshots
 │   ├── META.json
 │   ├── alerts.parquet
 │   ├── features.parquet
 │   ├── clusters.parquet
 │   └── money_flows.parquet
 │
-└── address-labels/                         # Address labels reference
+└── address-labels/                                       # Address labels reference
     ├── ethereum_address_labels.parquet
     ├── bitcoin_address_labels.parquet
     └── polygon_address_labels.parquet
@@ -33,8 +33,8 @@ self.local_dir = PROJECT_ROOT / 'data' / 'input' / 'risk-scoring' / network / pr
 
 **After:**
 ```python
-self.s3_prefix = f"snapshots/{network}/{processing_date}"
-self.local_dir = PROJECT_ROOT / 'data' / 'input' / 'risk-scoring' / 'snapshots' / network / processing_date
+self.s3_prefix = f"snapshots/{network}/{processing_date}/{days}"
+self.local_dir = PROJECT_ROOT / 'data' / 'input' / 'risk-scoring' / 'snapshots' / network / processing_date / str(days)
 ```
 
 ### 2. Address Labels Path Update
@@ -53,8 +53,8 @@ s3_key = f"address-labels/{network}_address_labels.parquet"
 
 ### Snapshots
 - **Old**: `s3://bucket/{network}/{processing_date}/{window_days}d/*.parquet`
-- **New**: `s3://bucket/snapshots/{network}/{processing_date}/*.parquet`
-- **Rationale**: Cleaner structure, window_days is now a data attribute not a path component
+- **New**: `s3://bucket/snapshots/{network}/{processing_date}/{window_days}/*.parquet`
+- **Rationale**: Organized under snapshots prefix, preserves window_days in path for easy identification
 
 ### Address Labels
 - **Old**: `s3://bucket/address-labels/{network}/address_labels_{processing_date}.parquet`
@@ -79,11 +79,12 @@ data/input/risk-scoring/
 ├── snapshots/
 │   └── {network}/
 │       └── {processing_date}/
-│           ├── META.json
-│           ├── alerts.parquet
-│           ├── features.parquet
-│           ├── clusters.parquet
-│           └── money_flows.parquet
+│           └── {window_days}/
+│               ├── META.json
+│               ├── alerts.parquet
+│               ├── features.parquet
+│               ├── clusters.parquet
+│               └── money_flows.parquet
 │
 └── address-labels/
     ├── ethereum_address_labels.parquet
@@ -102,7 +103,7 @@ python -m packages.ingestion.sot_ingestion \
 ```
 
 ### Expected S3 Locations
-- **Snapshots**: `s3://risk-scoring/snapshots/ethereum/2024-01-15/`
+- **Snapshots**: `s3://risk-scoring/snapshots/ethereum/2024-01-15/7/`
 - **Address Labels**: `s3://risk-scoring/address-labels/ethereum_address_labels.parquet`
 
 ## Testing
