@@ -43,13 +43,7 @@ def main():
             migrator = MigrateSchema(client)
             migrator.run_migrations()
         
-        logger.info(f"✅ Database successfully initialized for {args.network}")
-        logger.info(f"Database: {connection_params['database']}")
-        logger.info("\nNext steps:")
-        logger.info(f"1. Download data: python scripts/download_from_sot.py --network {args.network} --processing-date YYYY-MM-DD")
-        logger.info(f"2. Process batch: python scripts/process_batch.py --network {args.network} --processing-date YYYY-MM-DD")
-        logger.info("3. Start API: python -m alert_scoring.api.server")
-        
+        logger.info(f"Database successfully initialized for {args.network}")
         return 0
         
     except Exception as e:

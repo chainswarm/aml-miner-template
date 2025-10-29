@@ -1,6 +1,7 @@
 NEVER write tests
 NEVER provide fallback code
 NEVER use emoticons in logs
+NEVER use step numbers or progress indicators in log messages (like "Step 1/3", "Phase 2", etc.)
 NEVER create data migrations
 NEVER create mocks
 NEVER return None or default values, if something went wrong raise exception

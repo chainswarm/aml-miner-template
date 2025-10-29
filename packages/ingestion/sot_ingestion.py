@@ -129,7 +129,7 @@ class SOTDataIngestion(ABC):
             }
         )
         
-        logger.info("Step 1/6: Checking if data already exists")
+        logger.info("Checking if data already exists")
         
         validation_query = f"""
             SELECT COUNT(DISTINCT table) as tables_with_data
@@ -180,7 +180,7 @@ class SOTDataIngestion(ABC):
             return
         
         if tables_with_data > 0:
-            logger.info("Step 2/6: Cleaning up partial data")
+            logger.info("Cleaning up partial data")
             logger.warning(f"Partial data detected ({tables_with_data}/4 tables). Cleaning up...")
             
             cleanup_queries = [
@@ -198,13 +198,13 @@ class SOTDataIngestion(ABC):
             
             logger.success("Cleanup complete")
         else:
-            logger.info("Step 2/6: No cleanup needed (no existing data)")
+            logger.info("No cleanup needed (no existing data)")
         
         if terminate_event.is_set():
             logger.warning("Termination requested after cleanup")
             return
         
-        logger.info("Step 3/6: Downloading files from S3")
+        logger.info("Downloading files from S3")
         logger.info(f"S3 source: s3://{self.bucket}/{self.s3_prefix}")
         logger.info(f"Local destination: {self.local_dir}")
         
@@ -219,7 +219,7 @@ class SOTDataIngestion(ABC):
             logger.warning("Termination requested after download")
             return
         
-        logger.info("Step 4/6: Validating parquet files")
+        logger.info("Validating parquet files")
         
         ingestion_files = {}
         for table, base_name in [
@@ -258,7 +258,7 @@ class SOTDataIngestion(ABC):
             logger.warning("Termination requested after validation")
             return
         
-        logger.info("Step 5/6: Ingesting data into ClickHouse")
+        logger.info("Ingesting data into ClickHouse")
         logger.info(f"Target: {self.network} database")
         
         for table, filename in ingestion_files.items():
@@ -291,7 +291,7 @@ class SOTDataIngestion(ABC):
             logger.warning("Termination requested after ingestion")
             return
         
-        logger.info("Step 6/6: Verifying ingestion")
+        logger.info("Verifying ingestion")
         
         verify_query = f"""
             SELECT

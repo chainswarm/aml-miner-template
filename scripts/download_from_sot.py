@@ -220,7 +220,7 @@ def download_from_sot(
             
             metadata_repo.insert_metadata(processing_date, network, batch_info)
             
-            logger.info(f"✅ Successfully downloaded and stored data for {processing_date}/{network}")
+            logger.info(f"Successfully downloaded and stored data for {processing_date}/{network}")
             logger.info(f"  {len(alerts_df)} alerts")
             logger.info(f"  {len(features_df)} features")
             logger.info(f"  {len(clusters_df)} clusters")
