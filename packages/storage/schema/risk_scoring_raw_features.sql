@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS raw_features (
+CREATE TABLE IF NOT EXISTS risk_scoring_raw_features (
     processing_date Date,
     address String,
     feature_name String,

@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS raw_alerts (
+CREATE TABLE IF NOT EXISTS risk_scoring_raw_alerts (
     window_days Int32,
     processing_date Date,
     alert_id String,

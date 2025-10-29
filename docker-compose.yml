@@ -1,57 +1,54 @@
 version: '3.8'
 
 services:
-  # Alert Scoring API Service
   alert-scoring-api:
-    # Build from local Dockerfile
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - PYTHON_VERSION=3.13
     
-    # Container name
     container_name: alert-scoring-api
     
-    # Port mapping: host:container
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
     
-    # Volume mounts for persistent data and logs
     volumes:
-      # Mount trained models directory
-      # Models trained locally can be used in the container
       - ./trained_models:/app/trained_models:ro
-      
-      # Mount logs directory for persistence
-      # Logs will be written to host machine
       - ./logs:/app/logs
-      
-      # Optional: Mount data directory if needed
-      # - ./data:/app/data:ro
+      - ./data:/app/data:ro
     
-    # Environment variables
-    # Load from .env file in project root
     env_file:
       - .env
     
-    # Additional environment variables
     environment:
-      # API configuration
       - API_HOST=0.0.0.0
       - API_PORT=8000
-      - API_WORKERS=1
-      
-      # Logging
-      - LOG_LEVEL=INFO
-      
-      # Random seed for determinism
-      - RANDOM_SEED=42
-      
-      # Model paths (relative to /app in container)
-      - ALERT_SCORER_PATH=/app/trained_models/alert_scorer.txt
-      - ALERT_RANKER_PATH=/app/trained_models/alert_ranker.txt
-      - CLUSTER_SCORER_PATH=/app/trained_models/cluster_scorer.txt
+      - API_WORKERS=${API_WORKERS:-1}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - RANDOM_SEED=${RANDOM_SEED:-42}
+      - ALERT_SCORER_PATH=/app/trained_models/alert_scorer_v1.0.0.txt
+      - ALERT_RANKER_PATH=/app/trained_models/alert_ranker_v1.0.0.txt
+      - CLUSTER_SCORER_PATH=/app/trained_models/cluster_scorer_v1.0.0.txt
     
-    # Health check configuration
+    restart: unless-stopped
+    
+    mem_limit: 4g
+    mem_reservation: 1g
+    cpus: 2.0
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"
+    
+    networks:
+      aml-miner-network:
+        aliases:
+          - api
+    
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -59,41 +56,57 @@ services:
       start_period: 40s
       retries: 3
     
-    # Restart policy
-    # Will restart unless explicitly stopped
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24-alpine
+    container_name: alert-scoring-clickhouse
+    
+    ports:
+      - "${CLICKHOUSE_PORT:-8123}:8123"
+      - "9000:9000"
+    
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./alert_scoring/storage/schema:/docker-entrypoint-initdb.d:ro
+    
+    environment:
+      - CLICKHOUSE_DB=${CLICKHOUSE_DATABASE:-alert_scoring}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    
     restart: unless-stopped
     
-    # Resource limits (optional but recommended for production)
-    deploy:
-      resources:
-        limits:
-          # Maximum CPU usage (1.0 = 1 CPU core)
-          cpus: '2.0'
-          # Maximum memory usage
-          memory: 4G
-        reservations:
-          # Minimum guaranteed resources
-          cpus: '0.5'
-          memory: 1G
+    mem_limit: 2g
+    mem_reservation: 512m
     
-    # Logging configuration
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    
+    networks:
+      aml-miner-network:
+        aliases:
+          - clickhouse
+          - database
+    
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
-    
-    # Network configuration
-    networks:
-      - aml-miner-network
 
-# Network definition
 networks:
   aml-miner-network:
     driver: bridge
+    name: aml-miner-network
 
-# Optional: Volumes for data persistence
-# Uncomment if you want Docker-managed volumes instead of bind mounts
-# volumes:
-#   trained-models:
-#   logs:
+volumes:
+  clickhouse_data:
+    driver: local

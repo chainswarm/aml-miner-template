@@ -1,0 +1,81 @@
+services:
+  infra-risk-scoring-clickhouse:
+    container_name: infra-risk-scoring-clickhouse
+    image: clickhouse/clickhouse-server:latest
+    ports:
+      - "8223:8123"
+      - "9200:9000"
+      - "9209:9009"
+    volumes:
+      - infra-risk-scoring-clickhouse-data:/var/lib/clickhouse
+      - infra-risk-scoring-clickhouse-logs:/var/log/clickhouse-server
+    environment:
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-default}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-miner}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-miner}
+    restart: unless-stopped
+    networks:
+      - risk-scoring
+
+  infra-risk-scoring-clickhouse-ui:
+    container_name: infra-risk-scoring-clickhouse-ui-ui
+    image: ghcr.io/caioricciuti/ch-ui:latest
+    profiles:
+      - utilities
+    ports:
+      - "5522:5521"
+    environment:
+      - VITE_CLICKHOUSE_URL=http://infra-risk-scoring-clickhouse:8223/default
+      - VITE_CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
+      - VITE_CLICKHOUSE_PASS=${CLICKHOUSE_PASSWORD:-miner}
+    depends_on:
+      - infra-risk-scoring-clickhouse
+    networks:
+      - risk-scoring
+
+  srv-worker-risk-scoring:
+    container_name: srv-worker-risk-scoring
+    image: risk-scoring:latest
+    command: >
+      celery -A packages.jobs.celery_app worker
+      -l info
+      -Q risk-scoring-queue
+      --concurrency=4
+    environment:
+      - CLICKHOUSE_HOST=infra-risk-scoring-clickhouse
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-default}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-miner}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-miner}
+      - METRICS_PORT=8000
+      - NX_CUGRAPH_AUTOCONFIG=1
+    restart: unless-stopped
+    networks:
+      - risk-scoring
+    depends_on:
+      - infra-risk-scoring-clickhouse
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  util-infra-risk-scoring-dozzle:
+    container_name: util-infra-risk-scoring-dozzle
+    image: amir20/dozzle:latest
+    ports:
+      - "8989:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - risk-scoring
+
+volumes:
+  infra-risk-scoring-clickhouse-data:
+    name: infra-risk-scoring-clickhouse-data
+  infra-risk-scoring-clickhouse-logs:
+    name: infra-risk-scoring-clickhouse-logs
+
+networks:
+  risk-scoring:

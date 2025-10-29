@@ -5,8 +5,8 @@ import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 from loguru import logger
-from alert_scoring import setup_logger, terminate_event
-from alert_scoring.storage import get_connection_params, ClientFactory, MigrateSchema
+from packages import setup_logger, terminate_event
+from packages.storage import get_connection_params, ClientFactory, MigrateSchema
 
 
 class SOTDataIngestion(ABC):

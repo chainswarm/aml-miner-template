@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS alert_scores (
+CREATE TABLE IF NOT EXISTS risk_scoring_alert_scores (
     processing_date Date,
     alert_id String,
     score Float64,
