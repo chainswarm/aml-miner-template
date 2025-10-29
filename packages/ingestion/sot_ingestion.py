@@ -25,8 +25,8 @@ class SOTDataIngestion(ABC):
         self.s3_client = s3_client
         self.bucket = bucket
         self.network = network
-        self.local_dir = PROJECT_ROOT / 'data' / 'input' / 'risk-scoring' / network / processing_date / f'{days}d'
-        self.s3_prefix = f"{network}/{processing_date}/{days}d"
+        self.local_dir = PROJECT_ROOT / 'data' / 'input' / 'risk-scoring' / 'snapshots' / network / processing_date
+        self.s3_prefix = f"snapshots/{network}/{processing_date}"
         os.makedirs(self.local_dir, exist_ok=True)
 
     def _calculate_md5(self, file_path: str) -> str:
@@ -425,15 +425,16 @@ class SOTDataIngestion(ABC):
             raise
 
     def _download_address_labels(self) -> bool:
-        s3_key = f"address-labels/{self.network}/address_labels_{self.processing_date}.parquet"
-        local_path = self.local_dir / 'address_labels.parquet'
+        s3_key = f"address-labels/{self.network}_address_labels.parquet"
+        local_path = PROJECT_ROOT / 'data' / 'input' / 'risk-scoring' / 'address-labels' / f'{self.network}_address_labels.parquet'
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
         
         try:
             logger.info(f"Downloading address labels from s3://{self.bucket}/{s3_key}")
             self.s3_client.download_file(self.bucket, s3_key, str(local_path))
             
             file_size_mb = os.path.getsize(local_path) / (1024 * 1024)
-            logger.success(f"Downloaded address_labels.parquet ({file_size_mb:.2f} MB)")
+            logger.success(f"Downloaded {self.network}_address_labels.parquet ({file_size_mb:.2f} MB)")
             return True
             
         except ClientError as e:
@@ -444,13 +445,13 @@ class SOTDataIngestion(ABC):
             raise
 
     def _ingest_address_labels(self):
-        file_path = self.local_dir / 'address_labels.parquet'
+        file_path = PROJECT_ROOT / 'data' / 'input' / 'risk-scoring' / 'address-labels' / f'{self.network}_address_labels.parquet'
         
         if not os.path.exists(file_path):
             logger.warning("Address labels file not found, skipping ingestion")
             return
         
-        logger.info("Ingesting address_labels.parquet into raw_address_labels")
+        logger.info(f"Ingesting {self.network}_address_labels.parquet into raw_address_labels")
         
         try:
             import pandas as pd

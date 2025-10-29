@@ -4,10 +4,12 @@ CREATE TABLE IF NOT EXISTS raw_address_labels (
     network String,
     address String,
     label String,
+    network_type String DEFAULT '',
     address_type String DEFAULT 'unknown',
     address_subtype String DEFAULT '',
     risk_level String DEFAULT 'medium',
     confidence_score Float32 DEFAULT 0.5,
+    trust_level String DEFAULT '',
     source String DEFAULT ''
 )
 ENGINE = MergeTree()
