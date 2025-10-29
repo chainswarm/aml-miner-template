@@ -130,6 +130,7 @@ class MigrateSchema:
             "raw_alerts.sql",
             "raw_features.sql",
             "raw_clusters.sql",
+            "raw_money_flows.sql",
             "alert_scores.sql",
             "alert_rankings.sql",
             "cluster_scores.sql",

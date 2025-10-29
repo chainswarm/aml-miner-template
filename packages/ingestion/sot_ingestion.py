@@ -271,11 +271,13 @@ class SOTDataIngestion(ABC):
             logger.info(f"Ingesting {filename} into {table}")
             
             try:
-                self.client.insert_file(
-                    table=table,
-                    file_path=str(file_path),
-                    fmt='Parquet'
-                )
+                import pandas as pd
+                df = pd.read_parquet(file_path)
+                
+                if 'processing_date' in df.columns:
+                    df['processing_date'] = pd.to_datetime(df['processing_date'])
+                
+                self.client.insert_df(table=table, df=df)
                 
                 logger.success(f"Ingested {filename} into {table}")
                 
