@@ -20,4 +20,4 @@ PARTITION BY (toYYYYMM(processing_date))
 ORDER BY (processing_date, alert_id)
 SETTINGS index_granularity = 8192;
 
-CREATE INDEX IF NOT EXISTS idx_alert_id ON raw_alerts(alert_id) TYPE bloom_filter GRANULARITY 1;
+CREATE INDEX IF NOT EXISTS idx_alert_id ON risk_scoring_raw_alerts(alert_id) TYPE bloom_filter GRANULARITY 1;

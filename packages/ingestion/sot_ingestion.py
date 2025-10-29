@@ -6,7 +6,7 @@ from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 from loguru import logger
 from packages import setup_logger, terminate_event
-from packages.storage import get_connection_params, ClientFactory, MigrateSchema
+from packages.storage import get_connection_params, ClientFactory, MigrateSchema, create_database
 
 
 class SOTDataIngestion(ABC):
@@ -148,23 +148,23 @@ class SOTDataIngestion(ABC):
         validation_query = f"""
             SELECT COUNT(DISTINCT table) as tables_with_data
             FROM (
-                SELECT 'raw_alerts' as table
-                FROM raw_alerts
+                SELECT 'risk_scoring_raw_alerts' as table
+                FROM risk_scoring_raw_alerts
                 WHERE processing_date = '{self.processing_date}'
                   AND window_days = {self.days}
                 LIMIT 1
                 
                 UNION ALL
                 
-                SELECT 'raw_features' as table
-                FROM raw_features
+                SELECT 'risk_scoring_raw_features' as table
+                FROM risk_scoring_raw_features
                 WHERE processing_date = '{self.processing_date}'
                 LIMIT 1
                 
                 UNION ALL
                 
-                SELECT 'raw_clusters' as table
-                FROM raw_clusters
+                SELECT 'risk_scoring_raw_clusters' as table
+                FROM risk_scoring_raw_clusters
                 WHERE processing_date = '{self.processing_date}'
                   AND window_days = {self.days}
                 LIMIT 1
@@ -189,9 +189,9 @@ class SOTDataIngestion(ABC):
             logger.warning(f"Partial data detected ({tables_with_data}/3 tables). Cleaning up...")
             
             cleanup_queries = [
-                f"ALTER TABLE raw_alerts DELETE WHERE processing_date = '{self.processing_date}' AND window_days = {self.days}",
-                f"ALTER TABLE raw_features DELETE WHERE processing_date = '{self.processing_date}'",
-                f"ALTER TABLE raw_clusters DELETE WHERE processing_date = '{self.processing_date}' AND window_days = {self.days}"
+                f"ALTER TABLE risk_scoring_raw_alerts DELETE WHERE processing_date = '{self.processing_date}' AND window_days = {self.days}",
+                f"ALTER TABLE risk_scoring_raw_features DELETE WHERE processing_date = '{self.processing_date}'",
+                f"ALTER TABLE risk_scoring_raw_clusters DELETE WHERE processing_date = '{self.processing_date}' AND window_days = {self.days}"
             ]
             
             for query in cleanup_queries:
@@ -227,9 +227,9 @@ class SOTDataIngestion(ABC):
         
         ingestion_files = {}
         for table, base_name in [
-            ('raw_alerts', 'alerts'),
-            ('raw_features', 'features'),
-            ('raw_clusters', 'clusters')
+            ('risk_scoring_raw_alerts', 'alerts'),
+            ('risk_scoring_raw_features', 'features'),
+            ('risk_scoring_raw_clusters', 'clusters')
         ]:
             file_with_days = f'{base_name}_{self.processing_date}_{self.days}d.parquet'
             file_without_days = f'{base_name}_{self.processing_date}.parquet'
@@ -301,7 +301,7 @@ class SOTDataIngestion(ABC):
         
         verify_query = f"""
             SELECT
-                'raw_alerts' as table, COUNT(*) as count
+                'risk_scoring_raw_alerts' as table, COUNT(*) as count
             FROM raw_alerts
             WHERE processing_date = '{self.processing_date}'
               AND window_days = {self.days}
@@ -309,14 +309,14 @@ class SOTDataIngestion(ABC):
             UNION ALL
             
             SELECT
-                'raw_features' as table, COUNT(*) as count
+                'risk_scoring_raw_features' as table, COUNT(*) as count
             FROM raw_features
             WHERE processing_date = '{self.processing_date}'
             
             UNION ALL
             
             SELECT
-                'raw_clusters' as table, COUNT(*) as count
+                'risk_scoring_raw_clusters' as table, COUNT(*) as count
             FROM raw_clusters
             WHERE processing_date = '{self.processing_date}'
               AND window_days = {self.days}
@@ -360,11 +360,11 @@ class SOTDataIngestion(ABC):
             logger.error(f"Failed to download {s3_key}: {e}")
             raise
 
-if "__main__" == __name__:
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Data sync")
     parser.add_argument('--network', type=str, required=True)
-    parser.add_argument('--processing-date', type=int, default=7)
-    parser.add_argument('--days', type=int, default=7)
+    parser.add_argument('--processing-date', type=str, required=True)
+    parser.add_argument('--days', type=int, required=True)
     args = parser.parse_args()
 
     service_name = f'{args.network}-{args.processing_date}-{args.days}-data-sync'
@@ -392,9 +392,10 @@ if "__main__" == __name__:
         import sys
         sys.exit(1)
 
+    create_database(connection_params)
+
     with client_factory.client_context() as client:
         migrate_schema = MigrateSchema(client)
-        migrate_schema.create_database(args.network)
         migrate_schema.run_migrations()
 
         from botocore import UNSIGNED

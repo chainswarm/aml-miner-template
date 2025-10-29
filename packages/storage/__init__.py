@@ -11,13 +11,13 @@ from loguru import logger
 
 def get_connection_params(network: str) -> dict:
     connection_params = {
-        "host": os.getenv(f"{network.upper()}_CLICKHOUSE_HOST", os.getenv("CLICKHOUSE_HOST", "localhost")),
-        "port": os.getenv(f"{network.upper()}_CLICKHOUSE_PORT", os.getenv("CLICKHOUSE_PORT", "8123")),
-        "database": os.getenv(f"{network.upper()}_CLICKHOUSE_DATABASE", os.getenv("CLICKHOUSE_DATABASE", f"alert_scoring_{network.lower()}")),
-        "user": os.getenv(f"{network.upper()}_CLICKHOUSE_USER", os.getenv("CLICKHOUSE_USER", "default")),
-        "password": os.getenv(f"{network.upper()}_CLICKHOUSE_PASSWORD", os.getenv("CLICKHOUSE_PASSWORD", "")),
-        "max_execution_time": int(os.getenv(f"{network.upper()}_CLICKHOUSE_MAX_EXECUTION_TIME", "1800")),
-        "max_query_size": int(os.getenv(f"{network.upper()}_CLICKHOUSE_MAX_QUERY_SIZE", "5000000")),
+        "host": os.getenv(f"CLICKHOUSE_HOST", "localhost"),
+        "port": os.getenv(f"CLICKHOUSE_PORT", "8123"),
+        "database": os.getenv(f"CLICKHOUSE_DATABASE",  f"risk_scoring_{network.lower()}"),
+        "user": os.getenv(f"CLICKHOUSE_USER", "default"),
+        "password": os.getenv(f"CLICKHOUSE_PASSWORD", 'miner'),
+        "max_execution_time": os.getenv("CLICKHOUSE_MAX_EXECUTION_TIME", "1800"),
+        "max_query_size": os.getenv("CLICKHOUSE_MAX_QUERY_SIZE", "5000000")
     }
     return connection_params
 
@@ -124,24 +124,16 @@ class ClientFactory:
 class MigrateSchema:
     def __init__(self, client: Client):
         self.client = client
-    
-    def create_database(self, database_name: str):
-        try:
-            self.client.command(f"CREATE DATABASE IF NOT EXISTS {database_name}")
-            logger.info(f"Database {database_name} created/verified")
-        except Exception as e:
-            logger.error(f"Error creating database {database_name}: {str(e)}")
-            raise
-    
+
     def run_migrations(self):
         schemas = [
-            "raw_alerts.sql",
-            "raw_features.sql",
-            "raw_clusters.sql",
-            "alert_scores.sql",
-            "alert_rankings.sql",
-            "cluster_scores.sql",
-            "batch_metadata.sql",
+            "risk_scoring_raw_alerts.sql",
+            "risk_scoring_raw_features.sql",
+            "risk_scoring_raw_clusters.sql",
+            "risk_scoring_alert_scores.sql",
+            "risk_scoring_alert_rankings.sql",
+            "risk_scoring_cluster_scores.sql",
+            "risk_scoring_batch_metadata.sql",
         ]
         
         for schema_file in schemas:

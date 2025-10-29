@@ -11,4 +11,4 @@ PARTITION BY (toYYYYMM(processing_date))
 ORDER BY (processing_date, alert_id)
 SETTINGS index_granularity = 8192;
 
-CREATE INDEX IF NOT EXISTS idx_score ON alert_scores(score) TYPE minmax GRANULARITY 4;
+CREATE INDEX IF NOT EXISTS idx_score ON risk_scoring_alert_scores(score) TYPE minmax GRANULARITY 4;
