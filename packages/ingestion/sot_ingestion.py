@@ -21,7 +21,7 @@ class SOTDataIngestion(ABC):
         self.bucket = bucket
         self.network = network
         self.local_dir = os.path.join('data', 'input', network)
-        self.s3_prefix = f"alerts/{network}/"
+        self.s3_prefix = f"{network}/{processing_date}/{days}d"
         os.makedirs(self.local_dir, exist_ok=True)
 
     def _download_all(self) -> int:
@@ -35,32 +35,14 @@ class SOTDataIngestion(ABC):
                 logger.warning(f"No files found in S3 at {self.s3_prefix}")
                 return 0
 
-            expected_files = [
-                f'alerts_{self.processing_date}_{self.days}d.parquet',
-                f'features_{self.processing_date}_{self.days}d.parquet',
-                f'clusters_{self.processing_date}_{self.days}d.parquet'
-            ]
-            
-            expected_files_alt = [
-                f'alerts_{self.processing_date}.parquet',
-                f'features_{self.processing_date}.parquet',
-                f'clusters_{self.processing_date}.parquet'
-            ]
-
             all_files = [obj['Key'] for obj in response['Contents'] if obj['Key'].endswith('.parquet')]
             
             files_to_download = []
             for s3_key in all_files:
-                filename = os.path.basename(s3_key)
-                if filename in expected_files or filename in expected_files_alt:
                     files_to_download.append(s3_key)
             
             if not files_to_download:
-                logger.error(
-                    f"No matching files found for processing_date={self.processing_date}, days={self.days}",
-                    extra={"expected": expected_files, "found": [os.path.basename(f) for f in all_files]}
-                )
-                raise ValueError(f"No parquet files found for {self.processing_date}")
+                raise ValueError(f"No parquet files found for {self.processing_date}, days={self.days}")
 
             logger.info(f"Found {len(files_to_download)} files to download: {[os.path.basename(f) for f in files_to_download]}")
 
@@ -148,23 +130,23 @@ class SOTDataIngestion(ABC):
         validation_query = f"""
             SELECT COUNT(DISTINCT table) as tables_with_data
             FROM (
-                SELECT 'risk_scoring_raw_alerts' as table
-                FROM risk_scoring_raw_alerts
+                SELECT 'raw_alerts' as table
+                FROM raw_alerts
                 WHERE processing_date = '{self.processing_date}'
                   AND window_days = {self.days}
                 LIMIT 1
                 
                 UNION ALL
                 
-                SELECT 'risk_scoring_raw_features' as table
-                FROM risk_scoring_raw_features
+                SELECT 'raw_features' as table
+                FROM raw_features
                 WHERE processing_date = '{self.processing_date}'
                 LIMIT 1
                 
                 UNION ALL
                 
-                SELECT 'risk_scoring_raw_clusters' as table
-                FROM risk_scoring_raw_clusters
+                SELECT 'raw_clusters' as table
+                FROM raw_clusters
                 WHERE processing_date = '{self.processing_date}'
                   AND window_days = {self.days}
                 LIMIT 1
@@ -189,9 +171,9 @@ class SOTDataIngestion(ABC):
             logger.warning(f"Partial data detected ({tables_with_data}/3 tables). Cleaning up...")
             
             cleanup_queries = [
-                f"ALTER TABLE risk_scoring_raw_alerts DELETE WHERE processing_date = '{self.processing_date}' AND window_days = {self.days}",
-                f"ALTER TABLE risk_scoring_raw_features DELETE WHERE processing_date = '{self.processing_date}'",
-                f"ALTER TABLE risk_scoring_raw_clusters DELETE WHERE processing_date = '{self.processing_date}' AND window_days = {self.days}"
+                f"ALTER TABLE raw_alerts DELETE WHERE processing_date = '{self.processing_date}' AND window_days = {self.days}",
+                f"ALTER TABLE raw_features DELETE WHERE processing_date = '{self.processing_date}'",
+                f"ALTER TABLE raw_clusters DELETE WHERE processing_date = '{self.processing_date}' AND window_days = {self.days}"
             ]
             
             for query in cleanup_queries:
@@ -227,9 +209,9 @@ class SOTDataIngestion(ABC):
         
         ingestion_files = {}
         for table, base_name in [
-            ('risk_scoring_raw_alerts', 'alerts'),
-            ('risk_scoring_raw_features', 'features'),
-            ('risk_scoring_raw_clusters', 'clusters')
+            ('raw_alerts', 'alerts'),
+            ('raw_features', 'features'),
+            ('raw_clusters', 'clusters')
         ]:
             file_with_days = f'{base_name}_{self.processing_date}_{self.days}d.parquet'
             file_without_days = f'{base_name}_{self.processing_date}.parquet'
@@ -301,7 +283,7 @@ class SOTDataIngestion(ABC):
         
         verify_query = f"""
             SELECT
-                'risk_scoring_raw_alerts' as table, COUNT(*) as count
+                'raw_alerts' as table, COUNT(*) as count
             FROM raw_alerts
             WHERE processing_date = '{self.processing_date}'
               AND window_days = {self.days}
@@ -309,14 +291,14 @@ class SOTDataIngestion(ABC):
             UNION ALL
             
             SELECT
-                'risk_scoring_raw_features' as table, COUNT(*) as count
+                'raw_features' as table, COUNT(*) as count
             FROM raw_features
             WHERE processing_date = '{self.processing_date}'
             
             UNION ALL
             
             SELECT
-                'risk_scoring_raw_clusters' as table, COUNT(*) as count
+                'raw_clusters' as table, COUNT(*) as count
             FROM raw_clusters
             WHERE processing_date = '{self.processing_date}'
               AND window_days = {self.days}

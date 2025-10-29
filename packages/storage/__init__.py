@@ -127,13 +127,13 @@ class MigrateSchema:
 
     def run_migrations(self):
         schemas = [
-            "risk_scoring_raw_alerts.sql",
-            "risk_scoring_raw_features.sql",
-            "risk_scoring_raw_clusters.sql",
-            "risk_scoring_alert_scores.sql",
-            "risk_scoring_alert_rankings.sql",
-            "risk_scoring_cluster_scores.sql",
-            "risk_scoring_batch_metadata.sql",
+            "raw_alerts.sql",
+            "raw_features.sql",
+            "raw_clusters.sql",
+            "alert_scores.sql",
+            "alert_rankings.sql",
+            "cluster_scores.sql",
+            "batch_metadata.sql",
         ]
         
         for schema_file in schemas:
