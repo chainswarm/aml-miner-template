@@ -7,8 +7,13 @@ from packages import setup_logger, terminate_event
 from packages.storage import ClientFactory, get_connection_params
 from packages.training.feature_extraction import FeatureExtractor
 from packages.training.feature_builder import FeatureBuilder
-from packages.training.model_trainer import ModelTrainer
 from packages.training.model_storage import ModelStorage
+from packages.training.strategies import (
+    LabelStrategy,
+    ModelTrainer,
+    AddressLabelStrategy,
+    XGBoostTrainer
+)
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
 
@@ -23,7 +28,9 @@ class ModelTraining(ABC):
         client,
         model_type: str = 'alert_scorer',
         window_days: int = 7,
-        output_dir: Path = None
+        output_dir: Path = None,
+        label_strategy: LabelStrategy = None,
+        model_trainer: ModelTrainer = None
     ):
         self.network = network
         self.start_date = start_date
@@ -37,6 +44,14 @@ class ModelTraining(ABC):
         
         self.output_dir = output_dir
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        
+        self.label_strategy = label_strategy or AddressLabelStrategy()
+        self.model_trainer = model_trainer or XGBoostTrainer()
+        
+        logger.info(
+            f"Using label strategy: {self.label_strategy.__class__.__name__}, "
+            f"model trainer: {self.model_trainer.__class__.__name__}"
+        )
     
     def run(self):
         
@@ -67,6 +82,17 @@ class ModelTraining(ABC):
             logger.warning("Termination requested after extraction")
             return
         
+        logger.info("Deriving labels using strategy")
+        alerts_with_labels = self.label_strategy.derive_labels(
+            data['alerts'],
+            data
+        )
+        
+        if not self.label_strategy.validate_labels(alerts_with_labels):
+            raise ValueError("Label validation failed")
+        
+        data['alerts'] = alerts_with_labels
+        
         logger.info("Building feature matrix")
         builder = FeatureBuilder()
         X, y = builder.build_training_features(data)
@@ -75,9 +101,19 @@ class ModelTraining(ABC):
             logger.warning("Termination requested after feature building")
             return
         
+        logger.info("Getting sample weights")
+        labeled_alerts = alerts_with_labels[alerts_with_labels['label'].notna()].copy()
+        sample_weights = self.label_strategy.get_label_weights(labeled_alerts)
+        
         logger.info("Training model")
-        trainer = ModelTrainer(model_type=self.model_type)
-        model, metrics = trainer.train(X, y, cv_folds=5)
+        model = self.model_trainer.train(X, y, sample_weights)
+        
+        if terminate_event.is_set():
+            logger.warning("Termination requested after training")
+            return
+        
+        logger.info("Evaluating model")
+        metrics = self.model_trainer.evaluate(X, y)
         
         if terminate_event.is_set():
             logger.warning("Termination requested after training")
@@ -92,7 +128,9 @@ class ModelTraining(ABC):
             'window_days': self.window_days,
             'num_samples': len(X),
             'positive_rate': float(y.mean()),
-            'version': '1.0.0'
+            'version': '1.0.0',
+            'label_strategy': self.label_strategy.__class__.__name__,
+            'model_trainer': self.model_trainer.__class__.__name__
         }
         
         model_path = storage.save_model(
@@ -107,8 +145,8 @@ class ModelTraining(ABC):
             "Training workflow completed successfully",
             extra={
                 "model_path": str(model_path),
-                "test_auc": metrics.get('test_auc', 0.0),
-                "cv_auc_mean": metrics.get('cv_auc_mean', 0.0)
+                "auc": metrics.get('auc', 0.0),
+                "pr_auc": metrics.get('pr_auc', 0.0)
             }
         )
 

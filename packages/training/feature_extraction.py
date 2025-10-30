@@ -89,7 +89,7 @@ class FeatureExtractor:
         
         df = pd.DataFrame(
             result.result_rows,
-            columns=[col[0] for col in result.column_names]
+            columns=result.column_names
         )
         
         num_snapshots = df['processing_date'].nunique()
@@ -111,15 +111,18 @@ class FeatureExtractor:
                 address,
                 processing_date,
                 window_days,
-                total_received_usd,
-                total_sent_usd,
-                transaction_count,
+                total_in_usd,
+                total_out_usd,
+                tx_total_count,
                 unique_counterparties,
-                avg_transaction_usd,
-                max_transaction_usd,
-                is_exchange,
-                is_mixer,
-                risk_score
+                avg_tx_in_usd,
+                avg_tx_out_usd,
+                max_tx_usd,
+                is_exchange_like,
+                is_mixer_like,
+                behavioral_anomaly_score,
+                graph_anomaly_score,
+                global_anomaly_score
             FROM raw_features
             WHERE processing_date >= '{start_date}'
               AND processing_date <= '{end_date}'
@@ -137,7 +140,7 @@ class FeatureExtractor:
         
         df = pd.DataFrame(
             result.result_rows,
-            columns=[col[0] for col in result.column_names]
+            columns=result.column_names
         )
         
         logger.info(f"Extracted {len(df):,} feature records")
@@ -156,9 +159,12 @@ class FeatureExtractor:
                 cluster_id,
                 processing_date,
                 window_days,
-                cluster_size,
+                cluster_type,
+                total_alerts,
                 total_volume_usd,
-                member_addresses
+                addresses_involved,
+                severity_max,
+                confidence_avg
             FROM raw_clusters
             WHERE processing_date >= '{start_date}'
               AND processing_date <= '{end_date}'
@@ -174,7 +180,7 @@ class FeatureExtractor:
         
         df = pd.DataFrame(
             result.result_rows,
-            columns=[col[0] for col in result.column_names]
+            columns=result.column_names
         )
         
         logger.info(f"Extracted {len(df):,} clusters")
@@ -194,14 +200,17 @@ class FeatureExtractor:
                 to_address,
                 processing_date,
                 window_days,
-                amount_usd,
-                transaction_hash,
-                timestamp
+                tx_count,
+                amount_usd_sum,
+                first_seen_timestamp,
+                last_seen_timestamp,
+                avg_tx_size_usd,
+                is_bidirectional
             FROM raw_money_flows
             WHERE processing_date >= '{start_date}'
               AND processing_date <= '{end_date}'
               AND window_days = {window_days}
-            ORDER BY processing_date, timestamp
+            ORDER BY processing_date, from_address, to_address
         """
         
         result = self.client.query(query)
@@ -212,7 +221,7 @@ class FeatureExtractor:
         
         df = pd.DataFrame(
             result.result_rows,
-            columns=[col[0] for col in result.column_names]
+            columns=result.column_names
         )
         
         logger.info(f"Extracted {len(df):,} money flows")
@@ -253,7 +262,7 @@ class FeatureExtractor:
         
         df = pd.DataFrame(
             result.result_rows,
-            columns=[col[0] for col in result.column_names]
+            columns=result.column_names
         )
         
         logger.info(f"Extracted {len(df):,} address labels")

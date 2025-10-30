@@ -1,8 +1,9 @@
 import json
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 import lightgbm as lgb
+import xgboost as xgb
 from loguru import logger
 from clickhouse_connect.driver import Client
 
@@ -16,7 +17,7 @@ class ModelStorage:
     
     def save_model(
         self,
-        model: lgb.Booster,
+        model: Union[lgb.Booster, xgb.XGBClassifier],
         model_type: str,
         network: str,
         metrics: Dict[str, float],
@@ -61,7 +62,7 @@ class ModelStorage:
     
     def _create_metadata(
         self,
-        model: lgb.Booster,
+        model: Union[lgb.Booster, xgb.XGBClassifier],
         model_type: str,
         network: str,
         version: str,
@@ -69,6 +70,19 @@ class ModelStorage:
         metrics: Dict[str, float],
         training_config: Dict[str, Any]
     ) -> Dict[str, Any]:
+        
+        if isinstance(model, xgb.XGBClassifier):
+            num_features = model.n_features_in_
+            hyperparameters = model.get_params()
+            feature_names = model.get_booster().feature_names if hasattr(model.get_booster(), 'feature_names') else []
+            num_trees = model.n_estimators
+            best_iteration = getattr(model, 'best_iteration', num_trees)
+        else:
+            num_features = model.num_feature()
+            hyperparameters = model.params
+            feature_names = model.feature_name()
+            num_trees = model.num_trees()
+            best_iteration = model.best_iteration
         
         return {
             'model_id': f"{model_type}_{network}_v{version}_{timestamp}",
@@ -83,14 +97,14 @@ class ModelStorage:
             },
             'data_stats': {
                 'num_samples': training_config.get('num_samples', 0),
-                'num_features': model.num_feature(),
+                'num_features': num_features,
                 'positive_rate': training_config.get('positive_rate', 0.0)
             },
             'metrics': metrics,
-            'hyperparameters': model.params,
-            'feature_names': model.feature_name(),
-            'num_trees': model.num_trees(),
-            'best_iteration': model.best_iteration
+            'hyperparameters': hyperparameters,
+            'feature_names': feature_names,
+            'num_trees': num_trees,
+            'best_iteration': best_iteration
         }
     
     def _store_in_clickhouse(self, model_path: Path, metadata: Dict[str, Any]):
@@ -98,6 +112,14 @@ class ModelStorage:
         logger.info("Storing model metadata in ClickHouse")
         
         try:
+            start_date = metadata['training_period']['start_date']
+            end_date = metadata['training_period']['end_date']
+            
+            if isinstance(start_date, str):
+                start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            if isinstance(end_date, str):
+                end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            
             self.client.insert(
                 'trained_models',
                 [[
@@ -105,8 +127,8 @@ class ModelStorage:
                     metadata['model_type'],
                     metadata['version'],
                     metadata['network'],
-                    metadata['training_period']['start_date'],
-                    metadata['training_period']['end_date'],
+                    start_date,
+                    end_date,
                     datetime.utcnow(),
                     str(model_path),
                     json.dumps(metadata['metrics']),

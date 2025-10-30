@@ -291,6 +291,34 @@ This enables efficient queries and data management.
 
 MIT
 
+## Model Training
+
+Train your own ML models for competitive advantage:
+
+### Quick Start
+```bash
+# Train with SOT baseline (address_labels)
+python packages/training/model_training.py \
+    --network torus \
+    --start-date 2025-08-01 \
+    --end-date 2025-08-01 \
+    --model-type alert_scorer \
+    --window-days 195
+```
+
+### Customization Levels
+
+1. **Easy**: Add your labeled addresses to the database
+2. **Medium**: Implement custom label strategy
+3. **Advanced**: Use custom ML models (neural nets, LightGBM, etc.)
+4. **Expert**: Both custom labels + custom models
+
+📖 **Training Guides:**
+- **[Training Quickstart](TRAINING_QUICKSTART.md)** - Train your first model in 5 minutes
+- **[Adding Custom Labels](docs/ADDING_CUSTOM_LABELS.md)** - Improve with your own data
+- **[Miner Customization](docs/MINER_CUSTOMIZATION_GUIDE.md)** - Advanced customization
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+
 ## Documentation
 
 - **[Quick Start Guide](docs/quickstart.md)** - Get running in minutes
