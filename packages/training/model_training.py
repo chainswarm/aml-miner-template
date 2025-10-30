@@ -40,7 +40,7 @@ class ModelTraining(ABC):
         self.window_days = window_days
         
         if output_dir is None:
-            output_dir = PROJECT_ROOT / 'trained_models' / network
+            output_dir = PROJECT_ROOT / 'data' / 'trained_models' / network
         
         self.output_dir = output_dir
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -150,44 +150,3 @@ class ModelTraining(ABC):
             }
         )
 
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Model training")
-    parser.add_argument('--network', type=str, required=True, help='Network identifier (ethereum, bitcoin, etc.)')
-    parser.add_argument('--start-date', type=str, required=True, help='Start processing_date (YYYY-MM-DD)')
-    parser.add_argument('--end-date', type=str, required=True, help='End processing_date (YYYY-MM-DD)')
-    parser.add_argument('--model-type', type=str, default='alert_scorer', choices=['alert_scorer', 'alert_ranker', 'cluster_scorer'], help='Type of model to train')
-    parser.add_argument('--window-days', type=int, default=7, help='Window days to filter (7, 30, 90)')
-    parser.add_argument('--output-dir', type=Path, default=None, help='Output directory for models')
-    args = parser.parse_args()
-    
-    service_name = f'{args.network}-{args.model_type}-training'
-    setup_logger(service_name)
-    load_dotenv()
-    
-    logger.info(
-        "Initializing model training",
-        extra={
-            "network": args.network,
-            "start_date": args.start_date,
-            "end_date": args.end_date,
-            "model_type": args.model_type,
-            "window_days": args.window_days
-        }
-    )
-    
-    connection_params = get_connection_params(args.network)
-    client_factory = ClientFactory(connection_params)
-    
-    with client_factory.client_context() as client:
-        training = ModelTraining(
-            network=args.network,
-            start_date=args.start_date,
-            end_date=args.end_date,
-            client=client,
-            model_type=args.model_type,
-            window_days=args.window_days,
-            output_dir=args.output_dir
-        )
-        
-        training.run()

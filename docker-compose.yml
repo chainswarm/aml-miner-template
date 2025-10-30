@@ -14,7 +14,7 @@ services:
       - "${API_PORT:-8000}:8000"
     
     volumes:
-      - ./trained_models:/app/trained_models:ro
+      - ./data/trained_models:/app/data/trained_models:ro
       - ./logs:/app/logs
       - ./data:/app/data:ro
     
@@ -27,9 +27,9 @@ services:
       - API_WORKERS=${API_WORKERS:-1}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - RANDOM_SEED=${RANDOM_SEED:-42}
-      - ALERT_SCORER_PATH=/app/trained_models/alert_scorer_v1.0.0.txt
-      - ALERT_RANKER_PATH=/app/trained_models/alert_ranker_v1.0.0.txt
-      - CLUSTER_SCORER_PATH=/app/trained_models/cluster_scorer_v1.0.0.txt
+      - ALERT_SCORER_PATH=/app/data/trained_models/alert_scorer_v1.0.0.txt
+      - ALERT_RANKER_PATH=/app/data/trained_models/alert_ranker_v1.0.0.txt
+      - CLUSTER_SCORER_PATH=/app/data/trained_models/cluster_scorer_v1.0.0.txt
     
     restart: unless-stopped
     
@@ -70,7 +70,7 @@ services:
     
     volumes:
       - clickhouse_data:/var/lib/clickhouse
-      - ./alert_scoring/storage/schema:/docker-entrypoint-initdb.d:ro
+      - ./packages/storage/schema:/docker-entrypoint-initdb.d:ro
     
     environment:
       - CLICKHOUSE_DB=${CLICKHOUSE_DATABASE:-alert_scoring}

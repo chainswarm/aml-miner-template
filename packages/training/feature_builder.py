@@ -7,6 +7,41 @@ from loguru import logger
 
 class FeatureBuilder:
     
+    def build_inference_features(
+        self,
+        data: Dict[str, pd.DataFrame]
+    ) -> pd.DataFrame:
+        
+        logger.info("Building inference features")
+        
+        X = data['alerts'].copy()
+        
+        X = self._add_alert_features(X)
+        X = self._add_address_features(X, data['features'])
+        X = self._add_temporal_features(X)
+        X = self._add_statistical_features(X)
+        
+        if not data['clusters'].empty:
+            X = self._add_cluster_features(X, data['clusters'])
+        
+        if not data['money_flows'].empty:
+            X = self._add_network_features(X, data['money_flows'])
+        
+        if not data['address_labels'].empty:
+            X = self._add_label_features(X, data['address_labels'])
+        
+        X = self._finalize_features(X)
+        
+        logger.success(
+            "Inference feature building completed",
+            extra={
+                "num_samples": len(X),
+                "num_features": len(X.columns)
+            }
+        )
+        
+        return X
+    
     def build_training_features(
         self,
         data: Dict[str, pd.DataFrame]
