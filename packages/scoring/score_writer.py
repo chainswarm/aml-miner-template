@@ -7,6 +7,29 @@ from loguru import logger
 
 class ScoreWriter:
     
+    def cleanup_processing_date(self, processing_date: str):
+        
+        date_obj = datetime.strptime(processing_date, '%Y-%m-%d').date()
+        
+        tables = [
+            'alert_scores',
+            'alert_rankings',
+            'cluster_scores',
+            'batch_metadata'
+        ]
+        
+        for table in tables:
+            self.client.command(
+                f"ALTER TABLE {table} DELETE WHERE processing_date = '{date_obj}'"
+            )
+            logger.info(f"Cleaned up {table} for {processing_date}")
+        
+        for table in tables:
+            self.client.command(f"OPTIMIZE TABLE {table} FINAL")
+        
+        logger.success(f"Cleanup completed for {processing_date}")
+    
+    
     def __init__(self, client: Client):
         self.client = client
     

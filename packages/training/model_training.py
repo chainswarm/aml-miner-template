@@ -1,10 +1,7 @@
-import argparse
 from abc import ABC
 from pathlib import Path
-from dotenv import load_dotenv
 from loguru import logger
-from packages import setup_logger, terminate_event
-from packages.storage import ClientFactory, get_connection_params
+from packages import terminate_event
 from packages.training.feature_extraction import FeatureExtractor
 from packages.training.feature_builder import FeatureBuilder
 from packages.training.model_storage import ModelStorage
@@ -95,15 +92,23 @@ class ModelTraining(ABC):
         
         logger.info("Building feature matrix")
         builder = FeatureBuilder()
-        X, y = builder.build_training_features(data)
+        
+        if self.model_type == 'cluster_scorer':
+            X, y, labeled_clusters_df = builder.build_cluster_training_features(data)
+            logger.info("Getting sample weights")
+            sample_weights = self.label_strategy.get_label_weights(labeled_clusters_df)
+        else:
+            X, y = builder.build_training_features(data)
+            if terminate_event.is_set():
+                logger.warning("Termination requested after feature building")
+                return
+            logger.info("Getting sample weights")
+            labeled_alerts = alerts_with_labels[alerts_with_labels['label'].notna()].copy()
+            sample_weights = self.label_strategy.get_label_weights(labeled_alerts)
         
         if terminate_event.is_set():
             logger.warning("Termination requested after feature building")
             return
-        
-        logger.info("Getting sample weights")
-        labeled_alerts = alerts_with_labels[alerts_with_labels['label'].notna()].copy()
-        sample_weights = self.label_strategy.get_label_weights(labeled_alerts)
         
         logger.info("Training model")
         model = self.model_trainer.train(X, y, sample_weights)
@@ -139,6 +144,17 @@ class ModelTraining(ABC):
             network=self.network,
             metrics=metrics,
             training_config=training_config
+        )
+        
+        logger.info("Cleaning up old models")
+        storage.cleanup_old_models(
+            model_type=self.model_type,
+            network=self.network,
+            version=training_config['version'],
+            start_date=self.start_date,
+            end_date=self.end_date,
+            window_days=self.window_days,
+            keep_latest=3
         )
         
         logger.success(

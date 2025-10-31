@@ -13,3 +13,23 @@ if __name__ == "__main__":
     
     from scripts.train_model import main
     main()
+
+    sys.argv = [
+        'train_model.py',
+        '--network', 'torus',
+        '--start-date', '2025-08-01',
+        '--end-date', '2025-08-01',
+        '--model-type', 'alert_ranker',
+        '--window-days', '195'
+    ]
+    main()
+
+    sys.argv = [
+        'train_model.py',
+        '--network', 'torus',
+        '--start-date', '2025-08-01',
+        '--end-date', '2025-08-01',
+        '--model-type', 'cluster_scorer',
+        '--window-days', '195'
+    ]
+    main()

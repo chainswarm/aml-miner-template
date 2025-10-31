@@ -59,6 +59,9 @@ class RiskScoring(ABC):
         start_time = time.time()
         
         try:
+            logger.info("Cleaning up previous results for this processing date")
+            self.writer.cleanup_processing_date(self.processing_date)
+            
             logger.info("Extracting data from ClickHouse")
             extractor = FeatureExtractor(self.client)
             data = extractor.extract_training_data(
@@ -209,7 +212,7 @@ class RiskScoring(ABC):
         model_version = model_files[0].stem if model_files else 'unknown'
         
         builder = FeatureBuilder()
-        X_clusters = builder.build_inference_features(data)
+        X_clusters = builder.build_cluster_features(data)
         
         cluster_ids = data['clusters']['cluster_id']
         

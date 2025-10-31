@@ -15,6 +15,51 @@ class ModelStorage:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.client = client
     
+    def cleanup_old_models(
+        self,
+        model_type: str,
+        network: str,
+        version: str,
+        start_date: str,
+        end_date: str,
+        window_days: int,
+        keep_latest: int = 1
+    ):
+        
+        pattern = (
+            f"{model_type}_{network}_v{version}_"
+            f"{start_date}_{end_date}_w{window_days}d_*.txt"
+        )
+        
+        models = sorted(self.output_dir.glob(pattern), reverse=True)
+        
+        if len(models) <= keep_latest:
+            logger.info(f"No old models to clean up (found {len(models)}, keeping {keep_latest})")
+            return
+        
+        models_to_delete = models[keep_latest:]
+        
+        for model_path in models_to_delete:
+            model_path.unlink()
+            logger.info(f"Deleted old model: {model_path.name}")
+            
+            metadata_path = model_path.with_suffix('.json')
+            if metadata_path.exists():
+                metadata_path.unlink()
+                logger.info(f"Deleted metadata: {metadata_path.name}")
+        
+        if self.client:
+            for model_path in models_to_delete:
+                model_id = model_path.stem
+                self.client.command(
+                    f"ALTER TABLE trained_models DELETE WHERE model_id = '{model_id}'"
+                )
+                logger.info(f"Deleted model metadata from ClickHouse: {model_id}")
+            
+            self.client.command("OPTIMIZE TABLE trained_models FINAL")
+        
+        logger.success(f"Cleaned up {len(models_to_delete)} old model(s)")
+    
     def save_model(
         self,
         model: Union[lgb.Booster, xgb.XGBClassifier],

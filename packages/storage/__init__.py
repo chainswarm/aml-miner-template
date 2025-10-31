@@ -16,8 +16,7 @@ def get_connection_params(network: str) -> dict:
         "database": os.getenv(f"CLICKHOUSE_DATABASE",  f"risk_scoring_{network.lower()}"),
         "user": os.getenv(f"CLICKHOUSE_USER", "default"),
         "password": os.getenv(f"CLICKHOUSE_PASSWORD", 'miner'),
-        "max_execution_time": os.getenv("CLICKHOUSE_MAX_EXECUTION_TIME", "1800"),
-        "max_query_size": os.getenv("CLICKHOUSE_MAX_QUERY_SIZE", "5000000")
+        "max_execution_time": os.getenv("CLICKHOUSE_MAX_EXECUTION_TIME", "1800")
     }
     return connection_params
 
