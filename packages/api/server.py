@@ -4,9 +4,9 @@ from packages.api.routes import router
 from packages.api.config import settings
 
 app = FastAPI(
-    title="Miner API",
+    title="Risk Scoring API",
     version=settings.api_version,
-    description="Risk scoring miner API"
+    description="Risk Scoring API server"
 )
 
 app.add_middleware(

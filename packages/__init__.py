@@ -1,5 +1,3 @@
-from alert_scoring.version import __version__
-
 import signal
 import sys
 import time

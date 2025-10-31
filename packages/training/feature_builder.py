@@ -7,6 +7,29 @@ from loguru import logger
 
 class FeatureBuilder:
     
+    def _log_feature_statistics(self, df: pd.DataFrame, stage: str):
+        
+        logger.info(f"Feature statistics at stage: {stage}")
+        
+        numeric_cols = df.select_dtypes(include=[np.number]).columns
+        
+        for col in numeric_cols[:10]:
+            values = df[col].dropna()
+            if len(values) > 0:
+                logger.info(
+                    f"  {col}",
+                    extra={
+                        "min": float(values.min()),
+                        "max": float(values.max()),
+                        "mean": float(values.mean()),
+                        "std": float(values.std()) if len(values) > 1 else 0.0,
+                        "unique": int(values.nunique())
+                    }
+                )
+        
+        if len(numeric_cols) > 10:
+            logger.info(f"  ... and {len(numeric_cols) - 10} more features")
+    
     def build_inference_features(
         self,
         data: Dict[str, pd.DataFrame]
@@ -17,20 +40,31 @@ class FeatureBuilder:
         X = data['alerts'].copy()
         
         X = self._add_alert_features(X)
+        self._log_feature_statistics(X, "after_alert_features")
+        
         X = self._add_address_features(X, data['features'])
+        self._log_feature_statistics(X, "after_address_features")
+        
         X = self._add_temporal_features(X)
+        self._log_feature_statistics(X, "after_temporal_features")
+        
         X = self._add_statistical_features(X)
+        self._log_feature_statistics(X, "after_statistical_features")
         
         if not data['clusters'].empty:
             X = self._add_cluster_features(X, data['clusters'])
+            self._log_feature_statistics(X, "after_cluster_features")
         
         if not data['money_flows'].empty:
             X = self._add_network_features(X, data['money_flows'])
+            self._log_feature_statistics(X, "after_network_features")
         
         if not data['address_labels'].empty:
             X = self._add_label_features(X, data['address_labels'])
+            self._log_feature_statistics(X, "after_label_features")
         
         X = self._finalize_features(X)
+        self._log_feature_statistics(X, "final_features")
         
         logger.success(
             "Inference feature building completed",

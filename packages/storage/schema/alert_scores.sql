@@ -3,7 +3,6 @@ CREATE TABLE IF NOT EXISTS alert_scores (
     alert_id String,
     score Float64,
     model_version String,
-    latency_ms Float64,
     explain_json String DEFAULT '',
     created_at DateTime DEFAULT now()
 ) ENGINE = MergeTree()

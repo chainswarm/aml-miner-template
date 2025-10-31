@@ -37,8 +37,7 @@ class ScoreWriter:
         self,
         processing_date: str,
         scores: pd.DataFrame,
-        model_version: str,
-        latency_ms: float
+        model_version: str
     ):
         
         if scores.empty:
@@ -54,7 +53,6 @@ class ScoreWriter:
                 row['alert_id'],
                 float(row['score']),
                 model_version,
-                float(latency_ms),
                 '',
                 datetime.utcnow()
             ])
@@ -64,7 +62,7 @@ class ScoreWriter:
             rows,
             column_names=[
                 'processing_date', 'alert_id', 'score', 'model_version',
-                'latency_ms', 'explain_json', 'created_at'
+                'explain_json', 'created_at'
             ]
         )
         

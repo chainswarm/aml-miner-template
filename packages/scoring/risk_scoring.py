@@ -1,4 +1,5 @@
 import time
+import numpy as np
 from pathlib import Path
 from typing import Dict, Any, List
 from abc import ABC
@@ -76,9 +77,72 @@ class RiskScoring(ABC):
                 'clusters': len(data['clusters'])
             }
             
+            logger.info(
+                "Extracted data shapes",
+                extra={
+                    "alerts_shape": data['alerts'].shape,
+                    "features_shape": data['features'].shape,
+                    "clusters_shape": data['clusters'].shape,
+                    "money_flows_shape": data['money_flows'].shape,
+                    "address_labels_shape": data['address_labels'].shape
+                }
+            )
+            
+            if len(data['alerts']) > 0:
+                sample_size = min(3, len(data['alerts']))
+                for i in range(sample_size):
+                    alert = data['alerts'].iloc[i]
+                    logger.info(
+                        f"Sample alert {i+1}",
+                        extra={
+                            "alert_id": alert.get('alert_id'),
+                            "volume_usd": float(alert.get('volume_usd', 0)),
+                            "severity": alert.get('severity'),
+                            "confidence": float(alert.get('alert_confidence_score', 0))
+                        }
+                    )
+            
+            if len(data['features']) > 0:
+                sample_size = min(3, len(data['features']))
+                for i in range(sample_size):
+                    feat = data['features'].iloc[i]
+                    numeric_cols = data['features'].select_dtypes(include=[np.number]).columns[:5]
+                    feat_vals = {col: float(feat[col]) for col in numeric_cols if col in feat.index}
+                    logger.info(
+                        f"Sample feature row {i+1}",
+                        extra={
+                            "address": feat.get('address'),
+                            "sample_values": feat_vals
+                        }
+                    )
+            
             logger.info("Building inference features")
             builder = FeatureBuilder()
             X = builder.build_inference_features(data)
+            
+            logger.info(
+                "Built inference features",
+                extra={
+                    "feature_matrix_shape": X.shape,
+                    "num_samples": len(X),
+                    "num_features": len(X.columns)
+                }
+            )
+            
+            sample_size = min(3, len(X))
+            for i in range(sample_size):
+                row = X.iloc[i]
+                logger.info(
+                    f"Sample feature vector {i+1}",
+                    extra={
+                        "min": float(row.min()),
+                        "max": float(row.max()),
+                        "mean": float(row.mean()),
+                        "std": float(row.std()),
+                        "num_zeros": int((row == 0).sum()),
+                        "num_nonzeros": int((row != 0).sum())
+                    }
+                )
             
             alert_ids = data['alerts']['alert_id']
             
@@ -165,8 +229,7 @@ class RiskScoring(ABC):
         self.writer.write_alert_scores(
             self.processing_date,
             scores,
-            model_version,
-            latency_ms
+            model_version
         )
         
         metadata['output_counts_alert_scores'] = len(scores)
@@ -206,6 +269,14 @@ class RiskScoring(ABC):
             logger.warning("No clusters to score")
             return
         
+        logger.info(
+            "Cluster data before feature building",
+            extra={
+                "num_clusters": len(data['clusters']),
+                "clusters_shape": data['clusters'].shape
+            }
+        )
+        
         model = self.loader.load_latest_model(self.network, 'cluster_scorer')
         model_path = self.loader.models_dir / self.network
         model_files = sorted(model_path.glob('cluster_scorer_*.txt'), reverse=True)
@@ -213,6 +284,30 @@ class RiskScoring(ABC):
         
         builder = FeatureBuilder()
         X_clusters = builder.build_cluster_features(data)
+        
+        logger.info(
+            "Built cluster features",
+            extra={
+                "feature_matrix_shape": X_clusters.shape,
+                "num_clusters": len(X_clusters),
+                "num_features": len(X_clusters.columns)
+            }
+        )
+        
+        sample_size = min(3, len(X_clusters))
+        for i in range(sample_size):
+            row = X_clusters.iloc[i]
+            logger.info(
+                f"Sample cluster feature vector {i+1}",
+                extra={
+                    "min": float(row.min()),
+                    "max": float(row.max()),
+                    "mean": float(row.mean()),
+                    "std": float(row.std()),
+                    "num_zeros": int((row == 0).sum()),
+                    "num_nonzeros": int((row != 0).sum())
+                }
+            )
         
         cluster_ids = data['clusters']['cluster_id']
         

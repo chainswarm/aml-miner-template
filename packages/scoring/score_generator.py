@@ -18,6 +18,32 @@ class ScoreGenerator:
         
         start_time = time.time()
         
+        logger.info(
+            "Input features shape and sample values",
+            extra={
+                "shape": features.shape,
+                "num_samples": len(features),
+                "num_features": len(features.columns)
+            }
+        )
+        
+        sample_size = min(5, len(features))
+        for i in range(sample_size):
+            row = features.iloc[i]
+            logger.info(
+                f"Sample {i+1} feature values",
+                extra={
+                    "alert_id": alert_ids.iloc[i],
+                    "feature_stats": {
+                        "min": float(row.min()),
+                        "max": float(row.max()),
+                        "mean": float(row.mean()),
+                        "std": float(row.std()),
+                        "unique": int(row.nunique())
+                    }
+                }
+            )
+        
         if isinstance(model, xgb.XGBClassifier):
             scores = model.predict_proba(features)[:, 1]
         else:
@@ -29,6 +55,26 @@ class ScoreGenerator:
             'alert_id': alert_ids.values,
             'score': scores
         })
+        
+        logger.info(
+            "Output scores statistics",
+            extra={
+                "min_score": float(scores.min()),
+                "max_score": float(scores.max()),
+                "mean_score": float(scores.mean()),
+                "std_score": float(scores.std()),
+                "unique_scores": int(pd.Series(scores).nunique())
+            }
+        )
+        
+        for i in range(sample_size):
+            logger.info(
+                f"Sample {i+1} score",
+                extra={
+                    "alert_id": alert_ids.iloc[i],
+                    "score": float(scores[i])
+                }
+            )
         
         logger.info(
             f"Scored {len(result)} alerts in {latency_ms:.2f}ms "
@@ -77,6 +123,32 @@ class ScoreGenerator:
         
         start_time = time.time()
         
+        logger.info(
+            "Input cluster features shape and sample values",
+            extra={
+                "shape": features.shape,
+                "num_samples": len(features),
+                "num_features": len(features.columns)
+            }
+        )
+        
+        sample_size = min(5, len(features))
+        for i in range(sample_size):
+            row = features.iloc[i]
+            logger.info(
+                f"Sample {i+1} cluster feature values",
+                extra={
+                    "cluster_id": cluster_ids.iloc[i],
+                    "feature_stats": {
+                        "min": float(row.min()),
+                        "max": float(row.max()),
+                        "mean": float(row.mean()),
+                        "std": float(row.std()),
+                        "unique": int(row.nunique())
+                    }
+                }
+            )
+        
         if isinstance(model, xgb.XGBClassifier):
             scores = model.predict_proba(features)[:, 1]
         else:
@@ -88,6 +160,26 @@ class ScoreGenerator:
             'cluster_id': cluster_ids.values,
             'score': scores
         })
+        
+        logger.info(
+            "Output cluster scores statistics",
+            extra={
+                "min_score": float(scores.min()),
+                "max_score": float(scores.max()),
+                "mean_score": float(scores.mean()),
+                "std_score": float(scores.std()),
+                "unique_scores": int(pd.Series(scores).nunique())
+            }
+        )
+        
+        for i in range(sample_size):
+            logger.info(
+                f"Sample {i+1} cluster score",
+                extra={
+                    "cluster_id": cluster_ids.iloc[i],
+                    "score": float(scores[i])
+                }
+            )
         
         logger.info(
             f"Scored {len(result)} clusters in {latency_ms:.2f}ms"

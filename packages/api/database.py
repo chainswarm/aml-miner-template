@@ -44,10 +44,9 @@ def get_batch_metadata(client: Client, processing_date: str) -> Optional[Dict[st
 
 def get_alert_scores(client: Client, processing_date: str) -> List[Dict[str, Any]]:
     query = """
-    SELECT 
+    SELECT
         alert_id,
-        score,
-        latency_ms
+        score
     FROM alert_scores
     WHERE processing_date = {date:Date}
     ORDER BY alert_id
@@ -57,8 +56,7 @@ def get_alert_scores(client: Client, processing_date: str) -> List[Dict[str, Any
     return [
         {
             'alert_id': row[0],
-            'score': float(row[1]),
-            'latency_ms': float(row[2])
+            'score': float(row[1])
         }
         for row in result.result_rows
     ]
@@ -66,13 +64,14 @@ def get_alert_scores(client: Client, processing_date: str) -> List[Dict[str, Any
 
 def get_alert_rankings(client: Client, processing_date: str) -> List[Dict[str, Any]]:
     query = """
-    SELECT 
-        alert_id,
-        rank,
-        score
-    FROM alert_rankings
-    WHERE processing_date = {date:Date}
-    ORDER BY rank
+    SELECT
+        r.alert_id,
+        r.rank,
+        s.score
+    FROM alert_rankings r
+    LEFT JOIN alert_scores s ON r.alert_id = s.alert_id AND r.processing_date = s.processing_date
+    WHERE r.processing_date = {date:Date}
+    ORDER BY r.rank
     """
     result = client.query(query, parameters={'date': processing_date})
     
@@ -80,7 +79,7 @@ def get_alert_rankings(client: Client, processing_date: str) -> List[Dict[str, A
         {
             'alert_id': row[0],
             'rank': int(row[1]),
-            'score': float(row[2])
+            'score': float(row[2]) if row[2] is not None else 0.0
         }
         for row in result.result_rows
     ]
@@ -88,10 +87,9 @@ def get_alert_rankings(client: Client, processing_date: str) -> List[Dict[str, A
 
 def get_cluster_scores(client: Client, processing_date: str) -> List[Dict[str, Any]]:
     query = """
-    SELECT 
+    SELECT
         cluster_id,
-        score,
-        latency_ms
+        score
     FROM cluster_scores
     WHERE processing_date = {date:Date}
     ORDER BY cluster_id
@@ -101,8 +99,7 @@ def get_cluster_scores(client: Client, processing_date: str) -> List[Dict[str, A
     return [
         {
             'cluster_id': row[0],
-            'score': float(row[1]),
-            'latency_ms': float(row[2])
+            'score': float(row[1])
         }
         for row in result.result_rows
     ]

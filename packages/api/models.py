@@ -72,7 +72,6 @@ class LatestDateResponse(BaseModel):
 class AlertScore(BaseModel):
     alert_id: str
     score: float = Field(..., ge=0.0, le=1.0)
-    latency_ms: float
 
 
 class AlertScoresMetadata(BaseModel):
@@ -110,7 +109,6 @@ class AlertRankingsResponse(BaseModel):
 class ClusterScore(BaseModel):
     cluster_id: str
     score: float = Field(..., ge=0.0, le=1.0)
-    latency_ms: float
 
 
 class ClusterScoresMetadata(BaseModel):
